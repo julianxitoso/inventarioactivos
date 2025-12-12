@@ -1,0 +1,18 @@
+1. Crear un campo llamado Empresa (Arpesod_Finansueños) BD 
+2. Para las 2 empresas (Regionales)
+3. busqueda.php Añadir Filtro por empresa
+4. index.php (Formulario) Capturar el dato de empresa.
+5. index.php (Formulario) Agregar un nivel satifaccion (Estrellitas del 1 a 5)
+6. Checkbox en index.php (Aplicaciones que mas usas: 
+            1. Manager
+            2. Excel
+            3. Word
+            4. Power Point
+            5. Whatsap Web
+            6. Siesa
+            7. Finansueños 
+            8. Correo 
+            9. Internet
+            10. Otros
+7. informes.php un Informe por Empresa
+8 dashboard.php Un resumen de Activo por Empresa

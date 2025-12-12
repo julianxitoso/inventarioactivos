@@ -1,0 +1,12 @@
+[13-Sep-2025 13:51:51 UTC] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'at.tipo_impresora' in 'field list' in /home/electroc/inventarioti.electrocreditosdelcauca.com/exportar_excel.php:147
+Stack trace:
+#0 /home/electroc/inventarioti.electrocreditosdelcauca.com/exportar_excel.php(147): mysqli->prepare('SELECT at.id AS...')
+#1 {main}
+  thrown in /home/electroc/inventarioti.electrocreditosdelcauca.com/exportar_excel.php on line 147
+[30-Oct-2025 15:32:40 UTC] PHP Warning:  Undefined array key "_fecha_compra" in /home/electroc/inventarioti.electrocreditosdelcauca.com/exportar_excel.php on line 177
+[30-Oct-2025 15:32:40 UTC] PHP Warning:  Undefined array key "_fecha_compra" in /home/electroc/inventarioti.electrocreditosdelcauca.com/exportar_excel.php on line 177
+[30-Oct-2025 15:32:40 UTC] PHP Warning:  Cannot modify header information - headers already sent by (output started at /home/electroc/inventarioti.electrocreditosdelcauca.com/exportar_excel.php:177) in /home/electroc/inventarioti.electrocreditosdelcauca.com/exportar_excel.php on line 238
+[30-Oct-2025 15:32:40 UTC] PHP Warning:  Cannot modify header information - headers already sent by (output started at /home/electroc/inventarioti.electrocreditosdelcauca.com/exportar_excel.php:177) in /home/electroc/inventarioti.electrocreditosdelcauca.com/exportar_excel.php on line 239
+[30-Oct-2025 15:32:40 UTC] PHP Warning:  Cannot modify header information - headers already sent by (output started at /home/electroc/inventarioti.electrocreditosdelcauca.com/exportar_excel.php:177) in /home/electroc/inventarioti.electrocreditosdelcauca.com/exportar_excel.php on line 240
+[04-Nov-2025 14:30:15 UTC] Error al guardar activo S/N 8CQ52100FJ: Duplicate entry '8CQ52100FJ' for key 'serie'
+[04-Nov-2025 14:30:15 UTC] Error al guardar activo S/N XAGB829927: Duplicate entry 'XAGB829927' for key 'serie'
