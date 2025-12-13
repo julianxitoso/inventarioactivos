@@ -6,7 +6,7 @@
 
 $servidor = "localhost";
 $usuario  = "root";      // Usuario por defecto en XAMPP
-$password = "";          // Contraseña por defecto en XAMPP (vacía)
+$password = "@Ap200905";          // Contraseña actualizada por el usuario
 $base_datos = "inventario_tecnologia"; // Asegúrate que este nombre sea exacto
 
 // Crear conexión
