@@ -15,77 +15,83 @@ $conexion->set_charset("utf8mb4");
 if (isset($_FILES['archivo_excel']) && $_FILES['archivo_excel']['error'] == UPLOAD_ERR_OK) {
     $nombreArchivo = $_FILES['archivo_excel']['tmp_name'];
     
-    $spreadsheet = IOFactory::load($nombreArchivo);
-    $worksheet = $spreadsheet->getActiveSheet();
-    $filas = $worksheet->getRowIterator(2); // Empezar desde la segunda fila
+    try {
+        $spreadsheet = IOFactory::load($nombreArchivo);
+        $worksheet = $spreadsheet->getActiveSheet();
+        $filas = $worksheet->getRowIterator(2);
 
-    $filas_importadas = 0;
-    $filas_omitidas = 0;
-    $errores = [];
+        $filas_importadas = 0;
+        $filas_omitidas = 0;
+        $errores = [];
 
-    // Pre-cargar tipos de activo existentes para validación de duplicados
-    $tipos_existentes = [];
-    $result = $conexion->query("SELECT LOWER(nombre_tipo_activo) as nombre FROM tipos_activo");
-    while ($row = $result->fetch_assoc()) {
-        $tipos_existentes[] = $row['nombre'];
+        // 1. Cargar Tipos Existentes (Para evitar duplicados)
+        $tipos_existentes = [];
+        $res = $conexion->query("SELECT LOWER(nombre_tipo_activo) as nombre FROM tipos_activo");
+        while ($row = $res->fetch_assoc()) $tipos_existentes[] = $row['nombre'];
+
+        // 2. Cargar Categorías (Mapa: Nombre -> ID) para vincular
+        $mapa_categorias = [];
+        $res_cat = $conexion->query("SELECT id_categoria, LOWER(nombre_categoria) as nombre FROM categorias");
+        while ($row = $res_cat->fetch_assoc()) {
+            $mapa_categorias[$row['nombre']] = $row['id_categoria'];
+        }
+
+        foreach ($filas as $fila) {
+            $cellIterator = $fila->getCellIterator();
+            $cellIterator->setIterateOnlyExistingCells(false);
+            $datos = [];
+            foreach ($cellIterator as $celda) $datos[] = $celda->getValue();
+
+            // Mapeo según Plantilla: A=Nombre, B=Categoria, C=Vida Util, D=Campos Esp.
+            $nombre_tipo = trim($datos[0] ?? '');
+            $nombre_categoria = strtolower(trim($datos[1] ?? '')); // IMPORTANTE: Columna B es Categoría
+            $vida_util = trim($datos[2] ?? '');
+            
+            // Validaciones
+            if (empty($nombre_tipo)) {
+                $errores[] = "Fila " . $fila->getRowIndex() . ": Omitida. Nombre vacío.";
+                $filas_omitidas++; continue;
+            }
+            if (in_array(strtolower($nombre_tipo), $tipos_existentes)) {
+                $errores[] = "Fila " . $fila->getRowIndex() . ": Omitida. El tipo '{$nombre_tipo}' ya existe.";
+                $filas_omitidas++; continue;
+            }
+            
+            // Validar Categoría Padre
+            if (empty($nombre_categoria) || !isset($mapa_categorias[$nombre_categoria])) {
+                $errores[] = "Fila " . $fila->getRowIndex() . ": Omitida. La categoría '{$datos[1]}' no existe. Créela primero.";
+                $filas_omitidas++; continue;
+            }
+            $id_categoria = $mapa_categorias[$nombre_categoria];
+
+            if (!is_numeric($vida_util) || $vida_util < 0) $vida_util = 0;
+
+            // Insertar con ID de Categoría
+            $sql = "INSERT INTO tipos_activo (nombre_tipo_activo, id_categoria, vida_util_sugerida) VALUES (?, ?, ?)";
+            $stmt = $conexion->prepare($sql);
+            $stmt->bind_param("sii", $nombre_tipo, $id_categoria, $vida_util);
+
+            if ($stmt->execute()) {
+                $filas_importadas++;
+                $tipos_existentes[] = strtolower($nombre_tipo);
+            } else {
+                $errores[] = "Fila " . $fila->getRowIndex() . ": Error SQL - " . $stmt->error;
+                $filas_omitidas++;
+            }
+            $stmt->close();
+        }
+
+        $_SESSION['import_success_message'] = "Tipos importados: **{$filas_importadas}**.";
+        if ($filas_omitidas > 0) {
+            $_SESSION['import_error_message'] = "Filas omitidas: **{$filas_omitidas}**.";
+            $_SESSION['import_errors'] = $errores;
+        }
+
+    } catch (Exception $e) {
+        $_SESSION['import_error_message'] = "Error crítico: " . $e->getMessage();
     }
-
-    foreach ($filas as $fila) {
-        $datosFila = [];
-        $cellIterator = $fila->getCellIterator();
-        $cellIterator->setIterateOnlyExistingCells(false);
-        
-        foreach ($cellIterator as $index => $celda) {
-            $datosFila[$index] = $celda->getValue();
-        }
-
-        $nombre_tipo_activo = trim($datosFila[0] ?? '');
-        $descripcion = trim($datosFila[1] ?? '');
-        $vida_util = trim($datosFila[2] ?? '');
-        $campos_especificos_raw = trim($datosFila[3] ?? '0');
-
-        // --- VALIDACIONES ---
-        if (empty($nombre_tipo_activo)) {
-            $errores[] = "Fila " . $fila->getRowIndex() . ": Omitida. El 'nombre_tipo_activo' no puede estar vacío.";
-            $filas_omitidas++;
-            continue;
-        }
-        if (!is_numeric($vida_util) || intval($vida_util) <= 0) {
-            $errores[] = "Fila " . $fila->getRowIndex() . ": Omitida. La 'vida_util_sugerida' debe ser un número mayor a 0.";
-            $filas_omitidas++;
-            continue;
-        }
-        if (in_array(strtolower($nombre_tipo_activo), $tipos_existentes)) {
-            $errores[] = "Fila " . $fila->getRowIndex() . ": Omitida. El tipo de activo '{$nombre_tipo_activo}' ya existe.";
-            $filas_omitidas++;
-            continue;
-        }
-
-        $campos_especificos = (in_array(strtolower($campos_especificos_raw), ['1', 'si', 'true'])) ? 1 : 0;
-        
-        // --- INSERCIÓN ---
-        $sql_insert = "INSERT INTO tipos_activo (nombre_tipo_activo, descripcion, vida_util_sugerida, campos_especificos) VALUES (?, ?, ?, ?)";
-        $stmt_insert = $conexion->prepare($sql_insert);
-        $stmt_insert->bind_param("ssii", $nombre_tipo_activo, $descripcion, $vida_util, $campos_especificos);
-        
-        if ($stmt_insert->execute()) {
-            $filas_importadas++;
-            $tipos_existentes[] = strtolower($nombre_tipo_activo); // Añadir al array para evitar duplicados en el mismo archivo
-        } else {
-            $errores[] = "Fila " . $fila->getRowIndex() . ": Error al insertar en la base de datos - " . $stmt_insert->error;
-            $filas_omitidas++;
-        }
-        $stmt_insert->close();
-    }
-
-    $_SESSION['import_success_message'] = "Importación de Tipos de Activo completada. Se crearon exitosamente **{$filas_importadas}** nuevos tipos.";
-    if ($filas_omitidas > 0) {
-        $_SESSION['import_error_message'] = "Se omitieron **{$filas_omitidas}** filas por errores o duplicados.";
-        $_SESSION['import_errors'] = $errores;
-    }
-
 } else {
-    $_SESSION['import_error_message'] = "Error al subir el archivo. Por favor, inténtelo de nuevo.";
+    $_SESSION['import_error_message'] = "Error al subir archivo.";
 }
 
 header("Location: importar.php");

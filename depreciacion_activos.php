@@ -1,8 +1,8 @@
 <?php
 // =================================================================================
 // ARCHIVO: depreciacion.php
-// DESCRIPCIÓN: Análisis Contable con Histórico SMMLV (2010-2026)
-// ESTADO: FINAL (Lógica Histórica Retroactiva)
+// DESCRIPCIÓN: Análisis Contable con Base Fija SMMLV 2025
+// ESTADO: FINAL (Ajustado para usar solo salario 2025)
 // =================================================================================
 
 // 1. CONFIGURACIÓN Y SEGURIDAD
@@ -53,30 +53,10 @@ if (!isset($conexion) || (method_exists($conexion, 'connect_error') && $conexion
 $nombre_usuario_actual_sesion = $_SESSION['nombre_usuario_completo'] ?? 'Usuario';
 $rol_usuario_actual_sesion = $_SESSION['rol_usuario'] ?? 'Desconocido';
 
-// --- HISTÓRICO DE SALARIOS MÍNIMOS (COLOMBIA 2010-2026) ---
-// Fuente: Decretos Gobierno Nacional
-$historico_smmlv = [
-    2010 => 515000,
-    2011 => 535600,
-    2012 => 566700,
-    2013 => 589500,
-    2014 => 616000,
-    2015 => 644350,
-    2016 => 689455,
-    2017 => 737717,
-    2018 => 781242,
-    2019 => 828116,
-    2020 => 877803,
-    2021 => 908526,
-    2022 => 1000000,
-    2023 => 1160000,
-    2024 => 1300000,
-    2025 => 1423500, // Valor Oficial 2025
-    2026 => 1550000, // Proyección
-    'default' => 1423500 // Valor por defecto si no encuentra año
-];
-
-define('UMBRAL_DEPRECIACION', 1); // Activos < 1 SMMLV del año de compra son Gasto
+// --- CONFIGURACIÓN DE DEPRECIACIÓN (BASE 2025) ---
+// Se utiliza únicamente el SMMLV de 2025 para todos los cálculos, independiente de la fecha de compra.
+$salario_minimo_base = 1423500; // Valor Oficial 2025
+define('UMBRAL_DEPRECIACION', 1); // Activos < 1 SMMLV (2025) son Gasto Directo
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -243,8 +223,8 @@ document.addEventListener('DOMContentLoaded', function () {
     
     let activosCache = [];
 
-    // --- DATOS HISTÓRICOS INYECTADOS DESDE PHP ---
-    const historicoSMMLV = <?= json_encode($historico_smmlv) ?>;
+    // --- DATOS INYECTADOS DESDE PHP ---
+    const SALARIO_BASE = <?= $salario_minimo_base ?>; // Fijo 2025
     const UMBRAL_SMMLV = <?= UMBRAL_DEPRECIACION ?>;
 
     formFiltros.addEventListener('submit', function(e) {
@@ -333,23 +313,15 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // === LÓGICA FINANCIERA HISTÓRICA (SMMLV DEL AÑO DE COMPRA) ===
+    // === LÓGICA FINANCIERA ACTUALIZADA (BASE FIJA 2025) ===
     function mostrarDetalles(activo) {
         const valorCompra = parseFloat(activo.valor_aproximado || 0);
         const valorResidual = parseFloat(activo.valor_residual || 0);
         const fechaCompra = activo.fecha_compra;
         const tipoActivo = (activo.nombre_tipo_activo || '').toLowerCase();
 
-        // 1. Determinar Salario Mínimo del Año de Compra
-        let anioCompra = 2025; // Default
-        let salarioAplicable = historicoSMMLV['default'];
-        
-        if (fechaCompra) {
-            anioCompra = new Date(fechaCompra).getFullYear();
-            // Si el año es muy viejo (antes de 2010), usamos 2010 como base
-            if (anioCompra < 2010) salarioAplicable = historicoSMMLV[2010];
-            else salarioAplicable = historicoSMMLV[anioCompra] || historicoSMMLV['default'];
-        }
+        // 1. Salario Base Fijo (2025)
+        const salarioAplicable = SALARIO_BASE;
 
         // 2. Determinar Vida Útil Fiscal (Reglas Negocio)
         let vidaUtilAnios = parseInt(activo.vida_util_sugerida || 0, 10);
@@ -372,13 +344,13 @@ document.addEventListener('DOMContentLoaded', function () {
         let depreciacion = {};
         let mesesTranscurridos = 0;
         
-        // Calcular valor en Salarios Mínimos (Usando el del año de compra)
+        // Calcular valor en Salarios Mínimos (Base 2025)
         const valorEnSalarios = salarioAplicable > 0 ? (valorCompra / salarioAplicable) : 0;
         
-        // --- CASO 1: MENOR CUANTÍA (< 1 SMMLV DEL AÑO COMPRA) ---
+        // --- CASO 1: MENOR CUANTÍA (< 1 SMMLV BASE 2025) ---
         if (valorEnSalarios < UMBRAL_SMMLV) {
             depreciacion.esDeduccionDirecta = true;
-            depreciacion.mensaje_especial = `Activo de Menor Cuantía (< 1 SMMLV de ${anioCompra}). Se deprecia al 100% en el año de compra.`;
+            depreciacion.mensaje_especial = `Activo de Menor Cuantía (< 1 SMMLV Base 2025). Se deprecia al 100% como gasto directo.`;
             depreciacion.valorADeducir = valorCompra;
             depreciacion.valorEnLibros = 0;
             depreciacion.depAcumulada = valorCompra;
@@ -445,7 +417,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         <li class="list-group-item d-flex justify-content-between"><span>Responsable:</span> <span class="text-end text-truncate" style="max-width:180px;">${escape(activo.nombre_responsable)}</span></li>
                         <li class="list-group-item d-flex justify-content-between"><span>Fecha Compra:</span> <span>${fechaCompra || 'N/A'}</span></li>
                         <li class="list-group-item d-flex justify-content-between bg-light"><span>Costo Histórico:</span> <strong>${f(valorCompra)}</strong></li>
-                        <li class="list-group-item d-flex justify-content-between"><span>SMMLV (${anioCompra}):</span> <span>${f2(salarioAplicable)}</span></li>
+                        <li class="list-group-item d-flex justify-content-between"><span>SMMLV Base (2025):</span> <span>${f2(salarioAplicable)}</span></li>
                         <li class="list-group-item d-flex justify-content-between"><span>Valor en Salarios:</span> <span>${valorEnSalarios.toFixed(2)} SMMLV</span></li>
                     </ul>
                     ${mensajeFiscal}
