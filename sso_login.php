@@ -43,7 +43,7 @@ try {
 
     // Asumimos que la cédula viene en el campo 'cedula' del payload, o dentro de 'data'
     // Ajustar según la estructura real del JWT que envíe el proveedor
-    $cedula_usuario = $decoded->data->number_document ?? ($decoded->number_document ?? null);
+    $cedula_usuario = $decoded->data->cedula ?? null;
 
     if (!$cedula_usuario) {
         die("Error: El token no contiene una cédula válida.");
