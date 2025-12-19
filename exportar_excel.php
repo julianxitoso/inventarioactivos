@@ -1,10 +1,9 @@
 <?php
 // =================================================================================
 // ARCHIVO: exportar_excel.php
-// ESTADO: FINAL (Corregido: Modelo sale vacío si no existe, no duplica Detalles)
+// ESTADO: FINAL (Soporta ta.vida_util_sugerida + Fallback Seguro)
 // =================================================================================
 
-// 1. LIMPIEZA DE BÚFER
 if (ob_get_level()) ob_end_clean();
 ob_start();
 
@@ -22,7 +21,6 @@ use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 try {
     session_start();
     
-    // Validaciones
     if (!isset($_SESSION['usuario_id'])) throw new Exception("Sesión expirada.");
     if (!file_exists(__DIR__ . '/backend/db.php')) throw new Exception("Falta backend/db.php");
     
@@ -33,26 +31,45 @@ try {
     if (!isset($conexion) || $conexion->connect_error) throw new Exception("Error conexión BD");
     $conexion->set_charset("utf8mb4");
 
-    // --- RECEPCIÓN DE DATOS ---
+    // --- DICCIONARIO MAESTRO (Respaldo) ---
+    $diccionario_maestro = [
+        'ID Activo' => 'at.id',
+        'Tipo de Activo' => 'ta.nombre_tipo_activo',
+        'Categoría' => 'cat.nombre_categoria',
+        'Marca' => 'at.marca',
+        'Serie' => 'at.serie',
+        'Cód. Inventario' => 'at.Codigo_Inv',
+        'Estado Actual' => 'at.estado',
+        'Valor Compra' => 'at.valor_aproximado',
+        'Fecha Compra' => 'at.fecha_compra',
+        'Detalles' => 'at.detalles',
+        'Centro de Costo' => 'cc.nombre_centro_costo',
+        'Regional' => 'r.nombre_regional',
+        'Nombre Responsable' => 'u.nombre_completo',
+        'Cédula Responsable' => 'u.usuario',
+        'Empresa Responsable' => 'u.empresa',
+        'Vida Útil (Años)' => 'at.vida_util',
+        'Vida Útil Estándar (Catálogo)' => 'ta.vida_util_sugerida', // NUEVO
+        'Valor Residual' => 'at.valor_residual',
+        'Valor Neto en Libros' => 'CALCULADO_VALOR_LIBROS',
+        'Depreciación Acumulada' => 'CALCULADO_DEP_ACUMULADA',
+        'Gasto Depreciación Mensual' => 'CALCULADO_DEP_MENSUAL'
+    ];
+
     $tipo_informe = $_POST['tipo_informe'] ?? 'general';
     $fecha_desde = $_POST['fecha_desde'] ?? '';
     $fecha_hasta = $_POST['fecha_hasta'] ?? '';
     $campos_raw = $_POST['campos_seleccionados'] ?? [];
-    
-    // Filtros adicionales
     $q_busqueda = $_POST['q_busqueda'] ?? '';
     
-    // CONFIGURACIÓN DEPRECIACIÓN
     $SMMLV_2025 = 1423500;
     $UMBRAL_DEPRECIACION = 1;
 
-    // --- CONSTRUCCIÓN INTELIGENTE DE CONSULTA ---
     $select_parts = [];
     $mapa_col_alias = [];
     $contador = 0;
     $necesita_calculo = false;
 
-    // Fallback
     if (empty($campos_raw) || !is_array($campos_raw)) {
         $campos_raw = ['at.id|||ID Activo', 'ta.nombre_tipo_activo|||Tipo'];
     }
@@ -66,36 +83,26 @@ try {
             $col_db = $parts[0];
             $header_name = $parts[1];
         } else {
-            continue;
+            // Soporte para formato antiguo
+            $header_name = $val;
+            $col_db = $diccionario_maestro[$val] ?? '';
+            if(empty($col_db)) continue;
         }
 
-        // --- GESTIÓN DE CAMPOS INEXISTENTES (FANTASMA) ---
-        // Estos campos se mostrarán en el Excel (encabezado) pero con celdas vacías
-        // porque aún no existen en la estructura de la base de datos.
+        // CAMPOS FANTASMA (Para evitar errores si alguien los fuerza)
         $campos_fantasma = [
-            'at.modelo',          // <--- CORRECCIÓN AQUÍ: Ahora sale vacío
-            'at.proveedor', 
-            'at.numero_factura', 
-            'at.mac_lan', 
-            'at.mac_wifi', 
-            'at.ip_asignada', 
-            'at.licencia_so',
-            'at.procesador',
-            'at.ram',
-            'at.disco_duro',
-            'at.sistema_operativo',
-            'at.offimatica',
-            'at.antivirus',
-            'at.tipo_equipo'
+            'at.modelo', 'at.proveedor', 'at.numero_factura', 
+            'at.mac_lan', 'at.mac_wifi', 'at.ip_asignada', 'at.licencia_so',
+            'at.procesador', 'at.ram', 'at.disco_duro', 'at.sistema_operativo',
+            'at.offimatica', 'at.antivirus', 'at.tipo_equipo'
         ];
 
         if (in_array($col_db, $campos_fantasma)) {
-            $col_db = "''"; // Inyectamos una cadena vacía en el SQL
+            $col_db = "''";
         }
 
         $alias_seguro = "col_" . $contador++;
         
-        // Detectar campos calculados
         if (strpos($col_db, 'CALCULADO_') !== false) {
             $necesita_calculo = true;
             $mapa_col_alias[$col_db] = $header_name;
@@ -120,7 +127,6 @@ try {
 
     $sql_select = implode(", ", $select_parts);
     
-    // --- JOINS ---
     $joins = " FROM activos_tecnologicos at
                LEFT JOIN tipos_activo ta ON at.id_tipo_activo = ta.id_tipo_activo
                LEFT JOIN categorias_activo cat ON ta.id_categoria = cat.id_categoria
@@ -130,7 +136,6 @@ try {
                LEFT JOIN regionales r ON cc.id_regional = r.id_regional
                LEFT JOIN prestamos_activos p ON (at.id = p.id_activo AND p.fecha_devolucion_real IS NULL) ";
 
-    // --- WHERE Y PARAMS ---
     $where_conds = ["at.estado != 'Dado de Baja'"];
     $params = [];
     $types = "";
@@ -162,7 +167,6 @@ try {
     $sql_where = " WHERE " . implode(" AND ", $where_conds);
     $sql_final = "SELECT $sql_select $joins $sql_where $order_by";
 
-    // EJECUTAR
     $stmt = $conexion->prepare($sql_final);
     if (!$stmt) throw new Exception("Error SQL: " . $conexion->error);
     
@@ -171,19 +175,16 @@ try {
     if (!$stmt->execute()) throw new Exception("Error Ejecución: " . $stmt->error);
     $result = $stmt->get_result();
 
-    // --- EXCEL ---
     $spreadsheet = new Spreadsheet();
     $sheet = $spreadsheet->getActiveSheet();
     $sheet->setTitle('Reporte');
 
-    // Estilos
     $headerStyle = [
         'font' => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF']],
         'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF191970']],
         'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
     ];
 
-    // Encabezados
     $col = 'A';
     foreach ($mapa_col_alias as $key => $headerName) {
         $sheet->setCellValue($col . '1', $headerName);
@@ -192,12 +193,10 @@ try {
     }
     $sheet->getStyle('A1:' . $sheet->getHighestColumn() . '1')->applyFromArray($headerStyle);
 
-    // Filas
     $rowNum = 2;
     while ($row = $result->fetch_assoc()) {
         $col = 'A';
         
-        // CÁLCULOS FINANCIEROS
         $res_calc = [];
         if ($necesita_calculo) {
             $v_compra = floatval($row['_calc_valor'] ?? 0);
@@ -219,7 +218,6 @@ try {
                 if ($f_actual > $f_inicio) {
                     $meses_uso = (($f_actual->format('Y') - $f_inicio->format('Y')) * 12) + ($f_actual->format('m') - $f_inicio->format('m'));
                 }
-                
                 $vida_meses = $vida_base * 12;
                 $valor_base_dep = max(0, $v_compra - $v_residual);
                 $dep_men = $valor_base_dep / $vida_meses;

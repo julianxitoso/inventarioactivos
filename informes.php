@@ -1,8 +1,4 @@
 <?php
-// =================================================================================
-// ARCHIVO: informes.php
-// ESTADO: FINAL (Campos inexistentes eliminados del selector de exportación)
-// =================================================================================
 
 error_reporting(E_ALL);
 ini_set('display_errors', 0); 
@@ -41,13 +37,12 @@ $f_regional = $_GET['f_regional'] ?? '';
 $f_categoria = $_GET['f_categoria'] ?? '';
 $q_busqueda = $_GET['q_busqueda'] ?? '';
 
-$titulo_pagina = "Central de Informes";
+$titulo_pagina = "Informes";
 $titulo_actual = "";
 $datos = [];
 $cols_html = [];
 
 // --- 3. DEFINICIÓN LIMPIA DE CAMPOS PARA EXPORTACIÓN ---
-// Se eliminaron: Modelo, Proveedor, Factura, MACs, Factor de Forma
 $campos_exportables = [
     'Identificación y Estado' => [
         'at.id' => 'ID Sistema',
@@ -72,6 +67,7 @@ $campos_exportables = [
         'at.valor_aproximado' => 'Costo de Adquisición',
         'at.vida_util' => 'Vida Útil (Años)',
         'at.valor_residual' => 'Valor Residual',
+        'ta.vida_util_sugerida' => 'Vida Útil Estándar (Catálogo)',
         'CALCULADO_VALOR_LIBROS' => 'Valor Neto en Libros (Actual)',
         'CALCULADO_DEP_ACUMULADA' => 'Depreciación Acumulada',
         'CALCULADO_DEP_MENSUAL' => 'Gasto Depreciación Mensual'
@@ -213,8 +209,7 @@ function badge($estado) {
 <div class="top-bar-custom">
     <div class="d-flex align-items-center">
         <a href="menu.php"><img src="imagenes/logo.png" height="60" alt="Logo"></a>
-        <h5 class="ms-3 mb-0 text-secondary fw-bold d-none d-md-block">Central de Informes</h5>
-    </div>
+        </div>
     <div>
         <span class="me-3 fw-bold text-secondary"><i class="bi bi-person-circle"></i> <?= htmlspecialchars($nombre_usuario_actual_sesion) ?></span>
         <a href="logout.php" class="btn btn-outline-danger btn-sm rounded-pill px-3">Salir</a>
@@ -232,36 +227,34 @@ function badge($estado) {
         </div>
 
         <div class="row g-4">
-            <div class="col-12"><h6 class="text-uppercase text-muted fw-bold border-bottom pb-2">Gestión de Activos</h6></div>
             
-            <div class="col-md-3">
-                <div class="report-card p-4">
-                    <div class="icon-box bg-icon-primary"><i class="bi bi-grid-fill"></i></div>
+            <div class="col-md-4">
+                <div class="report-card p-4 text-center">
+                    <div class="icon-box bg-icon-primary mx-auto"><i class="bi bi-grid-fill"></i></div>
                     <h6>Informe General</h6>
                     <p>Listado completo de todos los activos, ubicaciones y responsables.</p>
                     <a href="?tipo_informe=general" class="stretched-link"></a>
                 </div>
             </div>
             
-            <div class="col-md-3">
-                <div class="report-card p-4">
-                    <div class="icon-box bg-icon-info"><i class="bi bi-clock-history"></i></div>
+            <div class="col-md-4">
+                <div class="report-card p-4 text-center">
+                    <div class="icon-box bg-icon-info mx-auto"><i class="bi bi-clock-history"></i></div>
                     <h6>Movimientos</h6>
                     <p>Historial de traslados, asignaciones y cambios realizados.</p>
                     <a href="?tipo_informe=movimientos" class="stretched-link"></a>
                 </div>
             </div>
 
-            <div class="col-12 mt-4"><h6 class="text-uppercase text-muted fw-bold border-bottom pb-2">Auditoría y Bajas</h6></div>
-
-            <div class="col-md-3">
-                <div class="report-card p-4">
-                    <div class="icon-box bg-icon-danger"><i class="bi bi-trash-fill"></i></div>
+            <div class="col-md-4">
+                <div class="report-card p-4 text-center">
+                    <div class="icon-box bg-icon-danger mx-auto"><i class="bi bi-trash-fill"></i></div>
                     <h6>Activos Dados de Baja</h6>
                     <p>Equipos retirados del inventario activo y sus motivos.</p>
                     <a href="?tipo_informe=dados_baja" class="stretched-link"></a>
                 </div>
             </div>
+
         </div>
 
     <?php else: ?>

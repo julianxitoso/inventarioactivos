@@ -1,4 +1,9 @@
 <?php
+// =================================================================================
+// ARCHIVO: centro_gestion.php
+// ESTADO: FINAL (Incluye tarjeta de Gestión de Categorías)
+// =================================================================================
+
 session_start();
 require_once 'backend/auth_check.php';
 // Restringimos acceso a admins y registradores
@@ -17,41 +22,10 @@ $rol_usuario_actual_sesion = $_SESSION['rol_usuario'] ?? 'admin';
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <style>
-    html {
-        height: 100%; 
-    }
-
-    body {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        padding-top: 100px;
-        background-color: #f8f9fa;
-        display: flex;
-        flex-direction: column;
-        min-height: 100vh; 
-        margin: 0; 
-    }
-
-    .container-main {
-        flex-grow: 1; 
-        margin-top: 20px;
-        margin-bottom: 20px; 
-    }
-
-    .top-bar-custom {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        z-index: 1030;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0.5rem 1.5rem;
-        background-color: #ffffff;
-        border-bottom: 1px solid #dee2e6;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    }
-
+    html { height: 100%; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding-top: 100px; background-color: #f8f9fa; display: flex; flex-direction: column; min-height: 100vh; margin: 0; }
+    .container-main { flex-grow: 1; margin-top: 20px; margin-bottom: 20px; }
+    .top-bar-custom { position: fixed; top: 0; left: 0; right: 0; z-index: 1030; display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 1.5rem; background-color: #ffffff; border-bottom: 1px solid #dee2e6; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
     .logo-container-top img { width: auto; height: 75px; object-fit: contain; margin-right: 15px; }
     .user-info-top { font-size: 0.9rem; }
     .page-title { color: #191970; font-weight: 600; }
@@ -62,31 +36,10 @@ $rol_usuario_actual_sesion = $_SESSION['rol_usuario'] ?? 'admin';
     .management-hub-cards .card i { font-size: 2.5rem; margin-bottom: 0.5rem; }
     .management-hub-cards .card-title { font-size: 1.1rem; font-weight: 500; }
     .management-hub-cards .card-text { font-size: 0.85rem; }
-
-    /* Estilos para el footer */
-    .footer-custom {
-        background-color: #343a40;
-        color: #ffffff;
-        text-align: center;
-        padding: 1rem 0;
-        font-size: 0.8rem;
-        margin-top: auto; 
-    }
-
-    .footer-custom a {
-        color: #ffffff;
-        text-decoration: none;
-    }
-
-    .footer-custom a:hover {
-        text-decoration: underline;
-    }
-
-    .footer-social-icons a {
-        color: #ffffff;
-        font-size: 1.2rem;
-        margin: 0 0.5rem;
-    }
+    .footer-custom { background-color: #343a40; color: #ffffff; text-align: center; padding: 1rem 0; font-size: 0.8rem; margin-top: auto; }
+    .footer-custom a { color: #ffffff; text-decoration: none; }
+    .footer-custom a:hover { text-decoration: underline; }
+    .footer-social-icons a { color: #ffffff; font-size: 1.2rem; margin: 0 0.5rem; }
 </style>
 </head>
 <body>
@@ -113,6 +66,16 @@ $rol_usuario_actual_sesion = $_SESSION['rol_usuario'] ?? 'admin';
         ?>
         
         <div class="col">
+            <a href="gestionar_categorias.php" class="text-decoration-none text-dark">
+                <div class="card h-100">
+                    <div class="card-body d-flex flex-column justify-content-center align-items-center p-4"> 
+                        <i class="bi bi-diagram-3-fill" style="color: #6f42c1;"></i> <h5 class="card-title mt-2">Gestionar Categorías</h5>
+                        <p class="card-text small text-muted">Crear, editar y organizar categorías y códigos contables.</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col">
             <a href="gestionar_usuarios.php" class="text-decoration-none text-dark">
                 <div class="card h-100">
                     <div class="card-body d-flex flex-column justify-content-center align-items-center p-4"> 
@@ -130,7 +93,7 @@ $rol_usuario_actual_sesion = $_SESSION['rol_usuario'] ?? 'admin';
                      <div class="card-body d-flex flex-column justify-content-center align-items-center p-4">
                         <i class="bi bi-tags-fill text-warning"></i>
                         <h5 class="card-title mt-2">Gestionar Tipos de Activo</h5>
-                        <p class="card-text small text-muted">Añadir o eliminar categorías de activos.</p>
+                        <p class="card-text small text-muted">Añadir o eliminar tipos de activos.</p>
                     </div>
                 </div>
             </a>
@@ -207,16 +170,10 @@ $rol_usuario_actual_sesion = $_SESSION['rol_usuario'] ?? 'admin';
             <div class="col-md-6 text-md-start mb-2 mb-md-0">
                 <small class="text-muted">Sitio web desarrollado por <a href="https://www.julianxitoso.com" target="_blank" rel="noopener noreferrer" class="text-decoration-none text-primary">@julianxitoso.com</a></small>
             </div>
-            <div class="col-md-6 text-md-end">
-                <a href="https://facebook.com/tu_pagina" target="_blank" class="text-muted me-3" title="Facebook">
-                    <i class="bi bi-facebook" style="font-size: 1.5rem;"></i>
-                </a>
-                <a href="https://instagram.com/tu_usuario" target="_blank" class="text-muted me-3" title="Instagram">
-                    <i class="bi bi-instagram" style="font-size: 1.5rem;"></i>
-                </a>
-                <a href="https://tiktok.com/@tu_usuario" target="_blank" class="text-muted" title="TikTok">
-                    <i class="bi bi-tiktok" style="font-size: 1.5rem;"></i>
-                </a>
+            <div class="col-md-6 text-md-end footer-social-icons">
+                <a href="https://facebook.com/tu_pagina" target="_blank" class="text-muted" title="Facebook"><i class="bi bi-facebook"></i></a>
+                <a href="https://instagram.com/tu_usuario" target="_blank" class="text-muted" title="Instagram"><i class="bi bi-instagram"></i></a>
+                <a href="https://tiktok.com/@tu_usuario" target="_blank" class="text-muted" title="TikTok"><i class="bi bi-tiktok"></i></a>
             </div>
         </div>
     </div>

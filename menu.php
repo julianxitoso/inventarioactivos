@@ -1,7 +1,7 @@
 <?php
 // =================================================================================
 // ARCHIVO: menu.php
-// DESCRIPCIÓN: Menú principal con filtrado de tarjetas por permisos
+// DESCRIPCIÓN: Menú principal con filtrado de tarjetas por permisos de base de datos
 // =================================================================================
 
 
@@ -279,6 +279,20 @@ $rol_usuario_actual_sesion = $_SESSION['rol_usuario'] ?? 'Desconocido';
                         <i class="bi bi-gear-wide-connected text-primary"></i>
                         <h5 class="card-title">Centro de Gestión</h5>
                         <p class="card-text">Usuarios, Roles, Cargos, Tipos, Proveedores.</p>
+                    </div>
+                </div>
+                </a>
+            </div>
+            <?php endif; ?>
+
+            <?php if (tiene_permiso('ver_auditorias')): ?>
+            <div class="col">
+                <a href="auditorias.php" class="card-link">
+                <div class="card menu-card h-100">
+                    <div class="card-body">
+                        <i class="bi bi-clipboard-check text-primary"></i>
+                        <h5 class="card-title">Auditorías Físicas</h5>
+                        <p class="card-text">Realizar toma física de inventario, validar existencias y generar reportes.</p>
                     </div>
                 </div>
                 </a>
