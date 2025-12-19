@@ -4,11 +4,20 @@
 // DESCRIPCIÓN: Conexión directa a BD (Sin depender de Dotenv/Composer)
 // =================================================================================
 
-// Configuración de credenciales para XAMPP
-$servername = "localhost";
-$username = "root";
-$password = ""; // En XAMPP por defecto suele ser vacío
-$dbname = "inventario_tecnologia"; // <--- OJO: VERIFICA SI TU BASE DE DATOS SE LLAMA ASÍ O "helpdeskdb"
+// Cargar el autoloader de Composer
+require_once __DIR__ . '/../vendor/autoload.php';
+
+use Dotenv\Dotenv;
+
+// Cargar variables de entorno desde el directorio raíz
+$dotenv = Dotenv::createImmutable(__DIR__ . '/../');
+$dotenv->safeLoad();
+
+// Configuración de credenciales desde .env
+$servername = $_ENV['DB_HOST'] ?? 'localhost';
+$username = $_ENV['DB_USERNAME'] ?? 'root';
+$password = $_ENV['DB_PASSWORD'] ?? '';
+$dbname = $_ENV['DB_DATABASE'] ?? 'inventario_tecnologia';
 
 // Crear conexión
 $conexion = new mysqli($servername, $username, $password, $dbname);
@@ -24,4 +33,3 @@ $conexion->set_charset("utf8mb4");
 
 // Si necesitas la fecha y hora de Colombia
 date_default_timezone_set('America/Bogota');
-?>
