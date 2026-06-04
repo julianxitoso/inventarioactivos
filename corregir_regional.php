@@ -6,6 +6,8 @@ require_once 'backend/db.php';
 
 $mensaje = "";
 
+
+
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $cedula = $conexion->real_escape_string(trim($_POST['cedula']));
     $codigo_cc = $conexion->real_escape_string(trim($_POST['codigo_cc'])); // Ej: 10401
