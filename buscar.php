@@ -8,6 +8,8 @@ require_once __DIR__ . '/backend/db.php';
 
 // --- INICIO DEL BLOQUE DE VERIFICACIÓN DE CONEXIÓN MEJORADO ---
 $db_connection_error = null;
+$opciones_regionales = [];
+
 if (isset($conn) && !isset($conexion)) { $conexion = $conn; }
 
 // Verificamos si la variable $conexion existe y si no hay errores de conexión.
@@ -19,10 +21,12 @@ if (!isset($conexion) || (method_exists($conexion, 'connect_error') && $conexion
     $conexion->set_charset("utf8mb4");
     $opciones_tipos = $conexion->query("SELECT id_tipo_activo, nombre_tipo_activo FROM tipos_activo ORDER BY nombre_tipo_activo")->fetch_all(MYSQLI_ASSOC);
     $opciones_estados = $conexion->query("SELECT DISTINCT estado FROM activos_tecnologicos WHERE estado IS NOT NULL AND estado != '' ORDER BY estado")->fetch_all(MYSQLI_ASSOC);
+    
+    // CARGA DINÁMICA DE REGIONALES: Reemplaza el arreglo estático antiguo
+    $opciones_regionales = $conexion->query("SELECT nombre_regional FROM regionales ORDER BY nombre_regional ASC")->fetch_all(MYSQLI_ASSOC);
 }
 // --- FIN DEL BLOQUE DE VERIFICACIÓN ---
 
-$regionales = ['Popayan', 'Bordo', 'Santander', 'Ambienta', 'Valle', 'Pasto', 'Tuquerres', 'Huila', 'Nacional', 'Popayan 7','Puerto Tejada']; 
 $empresas_disponibles = ['Arpesod', 'Finansueños'];
 
 $nombre_usuario_actual_sesion = $_SESSION['nombre_usuario_completo'] ?? 'Usuario';
@@ -100,10 +104,20 @@ $rol_usuario_actual_sesion = $_SESSION['rol_usuario'] ?? 'Desconocido';
                                 <div class="col-md-3" id="contenedor-filtro-secundario" style="display: none;">
                                     <label for="filtro-tipo-equipo" class="form-label" id="label-filtro-secundario">Sub-filtro</label>
                                     <select id="filtro-tipo-equipo" name="tipo_equipo" class="form-select">
-                                        </select>
+                                    </select>
                                 </div>
                                 <div class="col-md-3"><label for="filtro-estado" class="form-label">Estado del Activo</label><select id="filtro-estado" name="estado" class="form-select"><option value="">-- Todos --</option><?php foreach ($opciones_estados as $estado): ?><option value="<?= htmlspecialchars($estado['estado']) ?>"><?= htmlspecialchars($estado['estado']) ?></option><?php endforeach; ?></select></div>
-                                <div class="col-md-3"><label for="filtro-regional" class="form-label">Regional del Responsable</label><select id="filtro-regional" name="regional" class="form-select"><option value="">-- Todas --</option><?php foreach ($regionales as $r): ?><option value="<?= htmlspecialchars($r) ?>"><?= htmlspecialchars($r) ?></option><?php endforeach; ?></select></div>
+                                
+                                <div class="col-md-3">
+                                    <label for="filtro-regional" class="form-label">Regional del Responsable</label>
+                                    <select id="filtro-regional" name="regional" class="form-select">
+                                        <option value="">-- Todas --</option>
+                                        <?php foreach ($opciones_regionales as $reg): ?>
+                                            <option value="<?= htmlspecialchars($reg['nombre_regional']) ?>"><?= htmlspecialchars($reg['nombre_regional']) ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                
                                 <div class="col-md-3"><label for="filtro-empresa" class="form-label">Empresa del Responsable</label><select id="filtro-empresa" name="empresa" class="form-select"><option value="">-- Todas --</option><?php foreach ($empresas_disponibles as $e): ?><option value="<?= htmlspecialchars($e) ?>"><?= htmlspecialchars($e) ?></option><?php endforeach; ?></select></div>
                                 <div class="col-md-3"><label for="filtro-fecha-desde" class="form-label">Fecha Compra Desde</label><input type="date" class="form-control" id="filtro-fecha-desde" name="fecha_desde"></div>
                                 <div class="col-md-3"><label for="filtro-fecha-hasta" class="form-label">Fecha Compra Hasta</label><input type="date" class="form-control" id="filtro-fecha-hasta" name="fecha_hasta"></div>
@@ -231,17 +245,17 @@ document.addEventListener('DOMContentLoaded', function() {
             html += `
             <div class="user-asset-group">
                  <div class="user-info-header d-flex justify-content-between align-items-center">
-                   <div>
-                       <h4>${info.nombre || 'Activos sin responsable'}</h4>
-                       <p class="mb-0"><strong>Cédula:</strong> ${info.cedula} | <strong>Cargo:</strong> ${info.cargo || 'N/A'} | <strong>Regional:</strong> ${info.regional_del_responsable || 'N/A'} | <strong>Empresa:</strong> ${info.empresa_responsable || 'N/A'}</p>
-                   </div>
-                   ${info.cedula !== 'N/A' ? `
-                   <div>
-                       <a href="generar_acta_por_cedula.php?cedula=${info.cedula}" target="_blank" class="btn btn-success" title="Generar acta para todos los activos de este usuario">
-                           <i class="bi bi-file-earmark-pdf-fill me-1"></i> Generar Acta
-                       </a>
-                   </div>
-                   ` : ''}
+                    <div>
+                        <h4>${info.nombre || 'Activos sin responsable'}</h4>
+                        <p class="mb-0"><strong>Cédula:</strong> ${info.cedula} | <strong>Cargo:</strong> ${info.cargo || 'N/A'} | <strong>Regional:</strong> ${info.regional_del_responsable || 'N/A'} | <strong>Empresa:</strong> ${info.empresa_responsable || 'N/A'}</p>
+                    </div>
+                    ${info.cedula !== 'N/A' ? `
+                    <div>
+                        <a href="generar_acta_por_cedula.php?cedula=${info.cedula}" target="_blank" class="btn btn-success" title="Generar acta para todos los activos de este usuario">
+                            <i class="bi bi-file-earmark-pdf-fill me-1"></i> Generar Acta
+                        </a>
+                    </div>
+                    ` : ''}
                  </div>
                  <div class="table-responsive">
                      <table class="table table-minimalist table-hover">
@@ -320,6 +334,5 @@ document.addEventListener('DOMContentLoaded', function() {
 
 });
 </script>
-
 </body>
 </html>

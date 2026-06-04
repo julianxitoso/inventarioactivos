@@ -3,9 +3,9 @@ ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
 session_start();
-require_once 'backend/auth_check.php'; 
-require_once 'backend/db.php'; 
-require_once 'lib/fpdf/fpdf.php'; 
+require_once __DIR__ . '/backend/auth_check.php'; 
+require_once __DIR__ . '/backend/db.php'; 
+require_once __DIR__ . '/lib/fpdf/fpdf.php';
 
 if (isset($conn) && !isset($conexion)) { $conexion = $conn; }
 if (!isset($conexion) || !$conexion) { die("Error crítico de conexión a la base de datos."); }

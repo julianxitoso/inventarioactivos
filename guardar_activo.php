@@ -1,8 +1,8 @@
 <?php
-// =================================================================================
-// ARCHIVO: guardar_activo.php
-// DESCRIPCIÓN: Procesa el formulario, guarda activos y actualiza al responsable
-// =================================================================================
+
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 
 require_once 'backend/auth_check.php';
 restringir_acceso_pagina(['admin', 'tecnico', 'registrador']);
@@ -147,17 +147,22 @@ if (is_array($activos) && count($activos) > 0) {
     $sql_historial = "INSERT INTO historial_activos (id_activo, tipo_evento, descripcion_evento, usuario_responsable, fecha_evento) VALUES (?, 'ASIGNACIÓN INICIAL', ?, ?, NOW())";
     $stmt_historial = $conexion->prepare($sql_historial);
 
-    foreach ($activos as $index => $activo) {
+foreach ($activos as $index => $activo) {
         // Validaciones básicas
         $tipo = $activo['tipo_activo'] ?? '';
-        if ($activo['tipo_impresora']) { $tipo = 'Impresora'; } // Ajuste para buscar ID correcto si es impresora
+        if (isset($activo['tipo_impresora']) && !empty($activo['tipo_impresora'])) { 
+            $tipo = 'Impresora'; 
+        }
 
         $marca = $activo['marca'];
         $serie = $activo['serie'];
         $estado = $activo['estado'];
         $valor = (float)$activo['valor_aproximado'];
         $fecha = $activo['fecha_compra'];
-        $codigo = $activo['codigo_inv'];
+        
+        // === SOLUCIÓN 2: Convertir cadena vacía en NULL real ===
+        $codigo = !empty($activo['codigo_inv']) ? trim($activo['codigo_inv']) : null;
+        
         $vida = (int)$activo['vida_util'];
         $detalles = $activo['detalles'];
         $rating = (int)$activo['satisfaccion_rating'];
@@ -169,7 +174,7 @@ if (is_array($activos) && count($activos) > 0) {
         $so = $activo['sistema_operativo'] ?? null;
         $office = $activo['offimatica'] ?? null;
         $av = $activo['antivirus'] ?? null;
-        $tipo_eq = $activo['tipo_impresora'] ? $activo['tipo_impresora'] : ($activo['tipo_equipo'] ?? null);
+        $tipo_eq = (!empty($activo['tipo_impresora'])) ? $activo['tipo_impresora'] : ($activo['tipo_equipo'] ?? null);
         $red = $activo['red'] ?? null;
 
         // Ejecutar Insert Activo
@@ -181,12 +186,12 @@ if (is_array($activos) && count($activos) > 0) {
             $estado, 
             $valor, 
             $fecha, 
-            $codigo, 
+            $codigo, // Si es null, mysqli lo enviará correctamente a la BD
             $vida, 
             $detalles, 
             $rating,
             $proc, $ram, $disco, $so, $office, $av, $tipo_eq, $red,
-            $id_centro_costo_resp // Guardamos el mismo centro de costo del usuario
+            $id_centro_costo_resp
         );
 
         if ($stmt_activo->execute()) {

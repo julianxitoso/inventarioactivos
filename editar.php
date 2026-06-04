@@ -173,13 +173,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $conexion->begin_transaction();
         try {
-            $stmt_get_new_user = $conexion->prepare("SELECT id, nombre_completo FROM usuarios WHERE usuario = ?");
+            // Modificado: Ahora también pedimos el id_centro_costo de la tabla usuarios
+            $stmt_get_new_user = $conexion->prepare("SELECT id, nombre_completo, id_centro_costo FROM usuarios WHERE usuario = ?");
             $stmt_get_new_user->bind_param("s", $nueva_cedula_resp_traslado);
             $stmt_get_new_user->execute();
             $result_new_user = $stmt_get_new_user->get_result();
             if ($row_new_user = $result_new_user->fetch_assoc()) {
                 $id_nuevo_responsable_traslado = $row_new_user['id'];
                 $nuevo_nombre_resp_traslado = $row_new_user['nombre_completo'];
+                // NUEVA LÍNEA: Guardamos la ubicación física a la que pertenece el nuevo responsable
+                $id_centro_costo_nuevo = $row_new_user['id_centro_costo']; 
             } else {
                 throw new Exception("La cédula del nuevo responsable no existe en el sistema.");
             }
@@ -195,9 +198,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new Exception("No se seleccionaron activos válidos para el traslado.");
             }
             $placeholders = str_repeat('?,', count($ids_array) - 1) . '?';
-            $sql_update_activos = "UPDATE activos_tecnologicos SET id_usuario_responsable = ? WHERE id IN ($placeholders)";
-            $types = 'i' . str_repeat('i', count($ids_array));
-            $params = array_merge([$id_nuevo_responsable_traslado], $ids_array);
+            // Modificado: Ahora actualizamos tanto el responsable COMO el id_centro_costo del activo
+            $sql_update_activos = "UPDATE activos_tecnologicos SET id_usuario_responsable = ?, id_centro_costo = ? WHERE id IN ($placeholders)";
+
+            // Modificado: Añadimos una 'i' extra porque ahora enviamos 2 datos antes de los IDs
+            $types = 'ii' . str_repeat('i', count($ids_array)); 
+
+            // Modificado: Agregamos la variable $id_centro_costo_nuevo al arreglo de parámetros
+            $params = array_merge([$id_nuevo_responsable_traslado, $id_centro_costo_nuevo], $ids_array);
             $stmt_update_activos = $conexion->prepare($sql_update_activos);
             $stmt_update_activos->bind_param($types, ...$params);
             $stmt_update_activos->execute();
@@ -447,7 +455,14 @@ if ($result_tipos_form && $result_tipos_form->num_rows > 0) {
         $opciones_tipo_activo_nombres[] = $row_form['nombre_tipo_activo'];
     }
 }
-$regionales_usuarios = ['Popayan', 'Bordo', 'Santander', 'Valle', 'Pasto', 'Tuquerres', 'Huila', 'Nacional', 'Popayan 7', 'Puerto Tejada'];
+$regionales_usuarios = [];
+$sql_regiones_dinamicas = "SELECT nombre_regional FROM regionales ORDER BY nombre_regional ASC";
+$res_regiones_dinamicas = $conexion->query($sql_regiones_dinamicas);
+if ($res_regiones_dinamicas && $res_regiones_dinamicas->num_rows > 0) {
+    while($row_reg = $res_regiones_dinamicas->fetch_assoc()) { 
+        $regionales_usuarios[] = $row_reg['nombre_regional'];
+    }
+}
 $empresas_usuarios_disponibles = ['Arpesod', 'Finansueños'];
 $regionales_opciones_traslado_usuario = $regionales_usuarios; 
 $empresas_opciones_traslado_usuario = $empresas_usuarios_disponibles;
