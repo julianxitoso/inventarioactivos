@@ -68,76 +68,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['login_submit'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Inventario de Activos</title>
     <link rel="icon" type="image/x-icon" href="imagenes/icono.ico">
+    <link rel="stylesheet" href="assets/css/style.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <style>
-        html, body {
-            height: 100%; 
-        }
-        body {
-            display: flex;
-            align-items: center; /* Centrar verticalmente el contenido del login */
-            justify-content: center; /* Centrar horizontalmente el contenido del login */
-            background-color: #f0f2f5; 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0; 
-            padding: 20px; /* Padding para que el login-container no pegue a los bordes */
-        }
-        .login-container {
-            background-color: #fff;
-            padding: 2.5rem; 
-            border-radius: 10px; 
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1); 
-            width: 100%;
-            max-width: 420px; 
-        }
-        .login-header {
-            text-align: center;
-            margin-bottom: 1.5rem;
-        }
-        .login-header img {
-            max-width: 180px; 
-            margin-bottom: 1rem;
-        }
-        .login-header h2 {
-            color: #333;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-        }
-        .form-floating label {
-            color: #6c757d;
-        }
-        .form-control:focus { 
-            border-color: #007bff; 
-            box-shadow: 0 0 0 0.25rem rgba(0, 123, 255, 0.25);
-        }
-        .btn-login {
-            background-color: #007bff; 
-            border: none;
-            padding: 0.75rem;
-            font-size: 1.05rem;
-            font-weight: 500;
-        }
-        .btn-login:hover {
-            background-color: #0056b3; 
-        }
-        .alert-danger {
-            font-size: 0.9rem;
-        }
-        .extra-links { text-align: center; margin-top: 1.5rem; }
-        .extra-links a { font-size: 0.9em; }
-        .btn-outline-principal {
-            color: #007bff; 
-            border-color: #007bff; 
-        }
-        .btn-outline-principal:hover {
-            background-color: #007bff; 
-            color: #ffffff; 
-        }
-        .btn-outline-principal i { color: inherit; }
-    </style>
 </head>
-<body>
+<body class="page-login">
     <div class="login-container">
         <div class="login-header">
             <img src="imagenes/logo.png" alt="Logo Empresa"> <h2>Inventario de Activos</h2>

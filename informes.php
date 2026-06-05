@@ -177,34 +177,12 @@ function badge($estado) {
 <head>
     <meta charset="UTF-8">
     <title><?= $titulo_pagina ?></title>
+    <link rel="stylesheet" href="assets/css/style.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
-    
-    <style>
-        body { padding-top: 80px; background-color: #f0f2f5; font-family: 'Segoe UI', sans-serif; }
-        .top-bar-custom { position: fixed; top: 0; left: 0; right: 0; z-index: 1030; background: #fff; border-bottom: 1px solid #dee2e6; padding: 0.5rem 1.5rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        
-        .report-card { transition: all 0.3s; border: none; border-radius: 12px; background: white; box-shadow: 0 4px 6px rgba(0,0,0,0.05); overflow: hidden; height: 100%; position: relative; }
-        .report-card:hover { transform: translateY(-5px); box-shadow: 0 8px 15px rgba(0,0,0,0.1); }
-        .report-card .icon-box { width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; border-radius: 10px; margin-bottom: 15px; font-size: 1.5rem; }
-        .report-card h6 { font-weight: 700; color: #2c3e50; }
-        .report-card p { font-size: 0.85rem; color: #6c757d; margin: 0; line-height: 1.4; }
-        .report-card .stretched-link::after { position: absolute; top: 0; right: 0; bottom: 0; left: 0; z-index: 1; content: ""; }
-
-        .bg-icon-primary { background: rgba(13, 110, 253, 0.1); color: #0d6efd; }
-        .bg-icon-success { background: rgba(25, 135, 84, 0.1); color: #198754; }
-        .bg-icon-warning { background: rgba(255, 193, 7, 0.1); color: #ffc107; }
-        .bg-icon-danger { background: rgba(220, 53, 69, 0.1); color: #dc3545; }
-        .bg-icon-info { background: rgba(13, 202, 240, 0.1); color: #0dcaf0; }
-
-        .card-filter { border: none; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); background: white; margin-bottom: 20px; }
-        .table-container { background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.04); }
-        table.dataTable thead th { background-color: #f8f9fa; color: #495057; font-weight: 700; font-size: 0.85rem; text-transform: uppercase; border-bottom: 2px solid #dee2e6; }
-        table.dataTable tbody td { font-size: 0.9rem; vertical-align: middle; }
-    </style>
 </head>
-<body>
+<body class="page-informes">
 
 <div class="top-bar-custom">
     <div class="d-flex align-items-center">

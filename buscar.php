@@ -38,25 +38,11 @@ $rol_usuario_actual_sesion = $_SESSION['rol_usuario'] ?? 'Desconocido';
     <meta charset="UTF-8">
     <title>Búsqueda Avanzada de Activos</title>
     <link rel="icon" type="image/x-icon" href="imagenes/icono.ico">
+    <link rel="stylesheet" href="assets/css/style.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <style>
-        body { background-color: #f4f6f9; font-family: 'Segoe UI', sans-serif; padding-top: 80px; }
-        .top-bar-custom { position: fixed; top: 0; left: 0; right: 0; z-index: 1030; display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 1.5rem; background-color: #f8f9fa; border-bottom: 1px solid #dee2e6; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .logo-container-top img { width: auto; height: 75px; object-fit: contain; }
-        .user-info-top { font-size: 0.9rem; color: #333; }
-        .page-header-title { color: #191970; }
-        .accordion-button:not(.collapsed) { color: #ffffff; background-color: #191970; }
-        .accordion-button:focus { box-shadow: 0 0 0 .25rem rgba(25, 25, 112, .2); }
-        .loader { border: 5px solid #f3f3f3; border-radius: 50%; border-top: 5px solid #191970; width: 50px; height: 50px; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .user-asset-group { background-color: #fff; padding: 20px; margin-bottom: 25px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
-        .user-info-header { border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
-        .user-info-header h4 { color: #191970; }
-        .table-minimalist { font-size: 0.85rem; }
-    </style>
 </head>
-<body>
+<body class="page-buscar">
 
 <div class="top-bar-custom">
     <div class="logo-container-top">

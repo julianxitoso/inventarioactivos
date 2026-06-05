@@ -122,35 +122,12 @@ if (isset($conexion) && $conexion && !$conexion_error_msg) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Historial: <?= htmlspecialchars($activo_info['nombre_tipo_activo'] ?? 'Activo') ?> S/N: <?= htmlspecialchars($activo_info['serie'] ?? $id_activo_historial) ?></title>
+    <link rel="stylesheet" href="assets/css/style.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="icon" type="image/x-icon" href="imagenes/icono.ico">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <style>
-        body { background-color: #eef2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding-top: 100px; line-height: 1.6; }
-        .top-bar-custom { position: fixed; top: 0; left: 0; right: 0; z-index: 1030; display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 1.5rem; background-color: #ffffff;  border-bottom: 1px solid #dee2e6; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .logo-container-top img { width: auto; height: 75px; object-fit: contain; margin-right: 15px; }
-        .user-info-top { font-size: 0.85rem; }
-        .container-report { max-width: 960px; margin: 20px auto 40px auto; background-color: #fff; padding: 30px; box-shadow: 0 0 15px rgba(0,0,0,0.1); }
-        .report-title-area { margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid #dee2e6; }
-        .report-title-area h3 { color: #0d6efd; font-weight: 600; }
-        .activo-info-section { background-color: #f9f9f9; border: 1px solid #e0e0e0; padding: 20px; margin-bottom: 30px; border-radius: 4px; }
-        .activo-info-section h5 { color: #004085; margin-bottom: 15px; border-bottom: 1px solid #cce5ff; padding-bottom: 10px; }
-        .activo-info-section p { margin-bottom: 0.5rem; font-size: 0.95rem; }
-        .activo-info-section p strong { min-width: 150px; display: inline-block; color: #495057; }
-        .historial-timeline { list-style: none; padding-left: 0; position: relative; }
-        .historial-timeline::before { content: ''; position: absolute; left: 7px; top: 0; bottom: 0; width: 2px; background-color: #dee2e6; }
-        .historial-entry { padding: 10px 0 15px 30px; margin-bottom: 15px; background-color: #fff; position: relative; }
-        .historial-entry::before { content: ''; position: absolute; left: 0px; top: 22px; width: 16px; height: 16px; border-radius: 50%; background-color: #0d6efd; border: 3px solid #fff; z-index: 1; }
-        .historial-header { margin-bottom: 8px; }
-        .historial-date { font-weight: 600; color: #333; font-size: 0.9rem; }
-        .historial-user { font-size: 0.85rem; color: #6c757d; }
-        .badge-custom { font-size: 0.85em; padding: 0.4em 0.7em; vertical-align: middle; }
-        .historial-description { margin-bottom: 10px; font-size: 0.95rem; }
-        .details-toggle { cursor: pointer; color: #007bff; text-decoration: none; font-size: 0.85em; }
-        .details-content { background-color: #f8f9fa; border: 1px solid #e9ecef; padding: 15px; margin-top: 10px; border-radius: 4px; font-size: 0.88rem; }
-    </style>
 </head>
-<body>
+<body class="page-historial">
     <div class="top-bar-custom d-print-none"> 
         <div class="logo-container-top">
             <a href="menu.php" title="Ir a Inicio"><img src="imagenes/logo.png" alt="Logo Empresa"></a>

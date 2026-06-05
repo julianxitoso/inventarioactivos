@@ -104,17 +104,10 @@ while($r = $res->fetch_assoc()) {
     <meta charset="UTF-8">
     <title>Gestionar Ubicaciones</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <style>
-        body { background-color: #f0f2f5; padding-top: 80px; font-family: 'Segoe UI', sans-serif; }
-        .top-bar-custom { position: fixed; top: 0; left: 0; right: 0; z-index: 1030; background: #fff; border-bottom: 1px solid #dee2e6; padding: 0.5rem 1.5rem; display: flex; justify-content: space-between; align-items: center; }
-        .card-regional { border: none; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 1rem; transition: transform 0.2s; }
-        .card-regional:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-        .table-centros td { font-size: 0.9rem; vertical-align: middle; }
-        .btn-action { padding: 0.2rem 0.5rem; font-size: 0.8rem; }
-    </style>
 </head>
-<body>
+<body class="page-gestionar-regionales">
 
 <div class="top-bar-custom">
     <div><a href="menu.php"><img src="imagenes/logo.png" height="75" alt="Logo"></a></div>

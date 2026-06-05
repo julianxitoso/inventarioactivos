@@ -211,17 +211,10 @@ if (isset($_GET['error_creacion'])) $abrir_modal_creacion_js = true;
     <title>Gestión de Usuarios</title>
     <link rel="icon" type="image/x-icon" href="imagenes/icono.ico">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <style>
-        body { padding-top: 110px; background-color: #eef2f5; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; min-height: 100vh; }
-        .main-container { flex-grow: 1; }
-        .top-bar-custom { position: fixed; top: 0; left: 0; right: 0; z-index: 1030; display: flex; justify-content: space-between; padding: 0.5rem 1.5rem; background: #fff; border-bottom: 1px solid #dee2e6; }
-        .logo-container-top img { height: 75px; }
-        .page-title { color: #0d6efd; font-weight: 600; }
-        .footer-custom { background: #f8f9fa; border-top: 1px solid #dee2e6; padding: 1rem 0; margin-top: auto; text-align: center; }
-    </style>
 </head>
-<body>
+<body class="page-gestionar-usuarios">
 
 <div class="top-bar-custom">
     <div class="logo-container-top"><a href="menu.php"><img src="imagenes/logo.png" alt="Logo"></a></div>

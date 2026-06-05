@@ -20,29 +20,10 @@ $rol_usuario_actual_sesion = $_SESSION['rol_usuario'] ?? 'admin';
     <title>Centro de Gestión - Inventario TI</title>
     <link rel="icon" type="image/x-icon" href="imagenes/icono.ico">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-<style>
-    html { height: 100%; }
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding-top: 100px; background-color: #f8f9fa; display: flex; flex-direction: column; min-height: 100vh; margin: 0; }
-    .container-main { flex-grow: 1; margin-top: 20px; margin-bottom: 20px; }
-    .top-bar-custom { position: fixed; top: 0; left: 0; right: 0; z-index: 1030; display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 1.5rem; background-color: #ffffff; border-bottom: 1px solid #dee2e6; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-    .logo-container-top img { width: auto; height: 75px; object-fit: contain; margin-right: 15px; }
-    .user-info-top { font-size: 0.9rem; }
-    .page-title { color: #191970; font-weight: 600; }
-    .card { border: 1px solid #e0e0e0; box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,.075); background-color: #ffffff; }
-    .management-hub-cards .card { cursor: pointer; transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out; }
-    .management-hub-cards .card:hover { transform: translateY(-5px); box-shadow: 0 0.5rem 1rem rgba(0,0,0,.15); }
-    .management-hub-cards .card-body { text-align: center; }
-    .management-hub-cards .card i { font-size: 2.5rem; margin-bottom: 0.5rem; }
-    .management-hub-cards .card-title { font-size: 1.1rem; font-weight: 500; }
-    .management-hub-cards .card-text { font-size: 0.85rem; }
-    .footer-custom { background-color: #343a40; color: #ffffff; text-align: center; padding: 1rem 0; font-size: 0.8rem; margin-top: auto; }
-    .footer-custom a { color: #ffffff; text-decoration: none; }
-    .footer-custom a:hover { text-decoration: underline; }
-    .footer-social-icons a { color: #ffffff; font-size: 1.2rem; margin: 0 0.5rem; }
-</style>
 </head>
-<body>
+<body class="page-centro-gestion">
 <div class="top-bar-custom">
     <div class="logo-container-top">
         <a href="menu.php" title="Ir a Inicio"><img src="imagenes/logo.png" alt="Logo ARPESOD ASOCIADOS SAS"></a>

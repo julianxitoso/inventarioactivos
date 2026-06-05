@@ -191,28 +191,15 @@ $init_data = json_encode($payload, JSON_UNESCAPED_UNICODE);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Dashboard Corporativo</title>
+    <link rel="stylesheet" href="assets/css/style.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    <style>
-        body { background: #f0f2f5; font-family: 'Segoe UI', sans-serif; padding-top: 80px; padding-bottom: 60px; }
-        .top-bar-custom { position: fixed; top: 0; left: 0; right: 0; z-index: 1030; background: #fff; border-bottom: 1px solid #e1e4e8; padding: 0.6rem 2rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.03); }
-        .kpi-card { background: #fff; border-radius: 12px; padding: 1.2rem; position: relative; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border: 1px solid #eef0f2; height: 100%; }
-        .kpi-value { font-size: 1.6rem; font-weight: 800; color: #1a202c; line-height: 1.2; }
-        .kpi-label { color: #718096; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
-        .chart-box { background: #fff; border-radius: 12px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border: 1px solid #eef0f2; margin-bottom: 1.5rem; }
-        .chart-title { font-size: 1rem; font-weight: 700; color: #2d3748; margin-bottom: 1.2rem; text-align: center; border-bottom: 1px solid #f0f0f0; padding-bottom: 10px; }
-        .chart-wrapper { position: relative; height: 280px; width: 100%; }
-        .filter-bar { background: #fff; padding: 15px 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); margin-bottom: 20px; border: 1px solid #f0f0f0; }
-        .select2-container .select2-selection--single { height: 38px; border: 1px solid #ced4da; border-radius: 6px; }
-        .select2-container--default .select2-selection--single .select2-selection__rendered { line-height: 36px; color: #4a5568; }
-        .footer-custom { background: #fff; border-top: 1px solid #e1e4e8; padding: 1.2rem; position: fixed; bottom: 0; width: 100%; z-index: 1000; text-align: center; color: #a0aec0; }
-    </style>
 </head>
-<body>
+<body class="page-dashboard">
 
 <div class="top-bar-custom">
     <div class="d-flex align-items-center">

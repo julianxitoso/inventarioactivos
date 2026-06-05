@@ -71,93 +71,11 @@ unset($_SESSION['mensaje_registro'], $_SESSION['mensaje_login'], $_SESSION['erro
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/x-icon" href="imagenes/icono.ico">
     <title>Registro de Usuario - Inventario</title>
+    <link rel="stylesheet" href="assets/css/style.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <style>
-        html, body {
-            height: 100%;
-        }
-        body {
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-            background-color: #ffffff !important;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding-top: 85px; /* Espacio para la barra superior fija */
-        }
-        .top-bar-public {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 1030;
-            display: flex;
-            justify-content: center; /* Centrar el logo */
-            align-items: center;
-            padding: 0.5rem 1rem;
-            background-color: #f8f9fa;
-            border-bottom: 1px solid #dee2e6;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-            height: 85px;
-        }
-        .logo-container-top img {
-            max-height: 65px;
-            width: auto;
-            max-width: 100%;
-            object-fit: contain;
-        }
-        .main-content-wrapper { /* Wrapper para el contenido principal */
-            flex-grow: 1;
-            display: flex;
-            align-items: center; 
-            justify-content: center;
-            padding: 20px 0; 
-            width: 100%;
-        }
-        .registro-container {
-            background-color: #fff;
-            padding: 2rem 2.5rem;
-            border-radius: 10px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            max-width: 700px; 
-        }
-        .registro-header {
-            text-align: center;
-            margin-bottom: 1.5rem;
-        }
-        .registro-header h3 { /* Ajustado de h2 a h3 para coincidir con el HTML */
-            color: #0d6efd; 
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-        }
-        .form-label {
-            font-weight: 500;
-        }
-        .btn-principal {
-            background-color: #191970;
-            border-color: #191970;
-            color: #ffffff;
-        }
-        .btn-principal:hover {
-            background-color: #111150;
-            border-color: #111150;
-            color: #ffffff;
-        }
-        #modalCedulaExistente .modal-header {
-            background-color: #191970;
-            color: #ffffff;
-        }
-        #modalCedulaExistente .modal-header .btn-close {
-            filter: invert(1) grayscale(100%) brightness(200%);
-        }
-        #modalCedulaExistente .modal-title i {
-            margin-right: 8px;
-        }
-    </style>
 </head>
-<body>
+<body class="page-registro">
     <div class="top-bar-public">
         <div class="logo-container-top">
             <a href="login.php" title="Ir a Login">

@@ -18,14 +18,10 @@ unset($_SESSION['import_success_message'], $_SESSION['import_error_message'], $_
     <meta charset="UTF-8">
     <title>Importador Maestro - Sistema de Activos</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <style>
-        body { font-family: 'Segoe UI', sans-serif; padding-top: 80px; background-color: #f8f9fa; min-height: 100vh; display: flex; flex-direction: column; }
-        .top-bar-custom { position: fixed; top: 0; left: 0; right: 0; z-index: 1030; background-color: #fff; border-bottom: 1px solid #dee2e6; padding: 0.5rem 1.5rem; display: flex; justify-content: space-between; align-items: center; }
-        .logo-container-top img { height: 60px; object-fit: contain; }
-    </style>
 </head>
-<body>
+<body class="page-importar">
     <div class="top-bar-custom">
         <div class="logo-container-top"><a href="menu.php"><img src="imagenes/logo.png" alt="Logo"></a></div>
         <div class="d-flex align-items-center">

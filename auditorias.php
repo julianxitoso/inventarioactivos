@@ -98,10 +98,10 @@ $auditorias = $conexion->query($sql_list);
     <meta charset="UTF-8">
     <title>Gestión de Auditorías</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <style>body{padding-top:80px;background:#f0f2f5;font-family:'Segoe UI',sans-serif;}.top-bar-custom{position:fixed;top:0;left:0;right:0;z-index:1030;background:#fff;border-bottom:1px solid #dee2e6;padding:10px 15px;box-shadow:0 2px 4px rgba(0,0,0,0.05);}.logo-container-top img{height:60px;object-fit:contain;margin-right:15px;}</style>
 </head>
-<body>
+<body class="page-auditorias">
     
     <div class="top-bar-custom">
         <div class="d-flex justify-content-between align-items-center">

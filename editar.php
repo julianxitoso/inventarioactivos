@@ -512,38 +512,11 @@ if (!function_exists('textarea_editable')) {
     <meta charset="UTF-8">
     <title>Administrar Activos</title>
     <link rel="icon" type="image/x-icon" href="imagenes/icono.ico">
+    <link rel="stylesheet" href="assets/css/style.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <style>
-        body { background-color: #ffffff !important; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding-top: 80px; }
-        .top-bar-custom { position: fixed; top: 0; left: 0; right: 0; z-index: 1030; display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 1.5rem; background-color: #f8f9fa; border-bottom: 1px solid #dee2e6; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .logo-container-top img { width: auto; height: 75px; object-fit: contain; margin-right: 15px; }
-        .user-info-top { font-size: 0.9rem; }
-        .btn-custom-search { background-color: #191970; color: white; }
-        .btn-custom-search:hover { background-color: #11114e; }
-        .user-asset-group { background-color: #fff; padding: 20px; margin-bottom: 25px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
-        .user-info-header { border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-start; }
-        .user-info-header .info-block { flex-grow: 1; }
-        .user-info-header .actions-block { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; min-width: 220px; text-align: right; }
-        .user-info-header h4 { color: #191970; font-weight: 600; margin-bottom: 2px; font-size: 1.1rem; }
-        .user-info-header p { margin-bottom: 2px; font-size: 0.95em; color: #555; }
-        .asset-form-outer-container { border: 1px solid #e0e0e0; border-radius: 6px; padding: 15px; margin-top: 15px; background-color: #fdfdfd; }
-        .asset-form-header { display: flex; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 8px; }
-        .asset-form-header .checkbox-transfer { margin-right: 10px; transform: scale(1.2); }
-        .asset-form-header h6 { font-weight: 600; color: #007bff; margin-bottom: 0; flex-grow: 1; }
-        .form-label-sm { font-size: 0.85em; margin-bottom: 0.2rem !important; color: #454545; }
-        .form-control-sm, .form-select-sm { font-size: 0.85em; padding: 0.3rem 0.6rem; }
-        .action-buttons { margin-top: 15px; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
-        .card.search-card { box-shadow: 0 2px 8px rgba(0,0,0,0.06); border: none; }
-        #listaActivosTrasladar { list-style-type: disc; padding-left: 20px; max-height: 150px; overflow-y: auto; font-size: 0.9em; }
-        #listaActivosTrasladar li { margin-bottom: 3px; }
-        .activo-enfocado { border: 2px solid #0d6efd !important; box-shadow: 0 0 15px rgba(13,110,253,0.5) !important; animation: pulse-border 1.5s infinite; }
-        @keyframes pulse-border { 0% { box-shadow: 0 0 0 0 rgba(13,110,253,0.7); } 70% { box-shadow: 0 0 0 10px rgba(13,110,253,0); } 100% { box-shadow: 0 0 0 0 rgba(13,110,253,0); } }
-        .accordion-button:not(.collapsed) { color: #ffffff; background-color: #191970; }
-        .accordion-button:focus { box-shadow: 0 0 0 .25rem rgba(25, 25, 112, .2); }
-    </style>
 </head>
-<body>
+<body class="page-editar">
     <div class="top-bar-custom">
         <div class="logo-container-top">
             <a href="menu.php" title="Ir a Inicio"><img src="imagenes/logo.png" alt="Logo ARPESOD ASOCIADOS SAS"></a>

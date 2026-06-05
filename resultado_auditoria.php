@@ -54,39 +54,10 @@ $novedades = array_filter($detalles, fn($i) => strpos($i['estado_auditoria'], 'M
     <meta charset="UTF-8">
     <title>Resultados: <?= htmlspecialchars($auditoria['nombre_auditoria']) ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <style>
-        /* ESTILOS GLOBALES Y BARRA SUPERIOR */
-        body { padding-top: 85px; background-color: #f0f2f5; font-family: 'Segoe UI', sans-serif; padding-bottom: 50px; }
-        
-        .top-bar-custom {
-            position: fixed; top: 0; left: 0; right: 0; z-index: 1030;
-            background: #fff; border-bottom: 1px solid #dee2e6;
-            padding: 10px 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            display: flex; justify-content: space-between; align-items: center;
-        }
-        .logo-container-top img { height: 60px; object-fit: contain; margin-right: 15px; }
-        
-        /* ESTILOS DE TARJETAS Y REPORTES */
-        .stat-card { border: none; border-radius: 10px; padding: 20px; color: white; height: 100%; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .bg-gradient-success { background: linear-gradient(45deg, #198754, #20c997); }
-        .bg-gradient-danger { background: linear-gradient(45deg, #dc3545, #f06595); }
-        .bg-gradient-warning { background: linear-gradient(45deg, #ffc107, #fd7e14); color: #333; }
-        .bg-gradient-info { background: linear-gradient(45deg, #0dcaf0, #0d6efd); }
-        .nav-tabs .nav-link.active { font-weight: bold; border-top: 3px solid #0d6efd; background-color: white; }
-        
-        /* ESTILOS PARA IMPRESIÓN */
-        @media print {
-            .no-print { display: none !important; }
-            body { padding-top: 0; background-color: white; }
-            .card { border: 1px solid #ddd !important; box-shadow: none !important; }
-            .nav-tabs { display: none; } /* Ocultar pestañas al imprimir, mostrar tablas secuenciales si se desea, o solo la activa */
-            .tab-pane { display: block !important; opacity: 1 !important; margin-bottom: 20px; page-break-inside: avoid; }
-            .tab-content { border: none; }
-        }
-    </style>
 </head>
-<body>
+<body class="page-resultado-auditoria">
 
     <div class="top-bar-custom no-print">
         <div class="logo-container-top">

@@ -65,45 +65,11 @@ define('UMBRAL_DEPRECIACION', 1); // Activos < 1 SMMLV (2025) son Gasto Directo
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Análisis de Depreciación de Activos</title>
     <link rel="icon" type="image/x-icon" href="imagenes/icono.ico">
+    <link rel="stylesheet" href="assets/css/style.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <style>
-        html { height: 100%; }
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            padding-top: 80px; 
-            background-color: #f4f6f9; 
-            display: flex; 
-            flex-direction: column; 
-            min-height: 100vh; 
-        }
-        .main-container { flex-grow: 1; }
-        .top-bar-custom { 
-            position: fixed; top: 0; left: 0; right: 0; z-index: 1030; 
-            display: flex; justify-content: space-between; align-items: center; 
-            padding: 0.5rem 1.5rem; background-color: #ffffff; 
-            border-bottom: 1px solid #dee2e6; box-shadow: 0 1px 3px rgba(0,0,0,0.05); 
-        }
-        .logo-container-top img { height: 75px; }
-        .page-header-title { color: #0d6efd; font-weight: 600; }
-        .accordion-button:not(.collapsed) { color: #ffffff; background-color: #0d6efd; }
-        .accordion-button:focus { box-shadow: 0 0 0 .25rem rgba(13, 110, 253, .25); }
-        .loader { border: 5px solid #f3f3f3; border-radius: 50%; border-top: 5px solid #0d6efd; width: 40px; height: 40px; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        #columna-resultados .list-group-item { cursor: pointer; border-radius: .5rem; margin-bottom: 5px; border: 1px solid #ddd;}
-        #columna-resultados .list-group-item:hover { background-color: #e9ecef; }
-        #columna-resultados .list-group-item.active { background-color: #0d6efd; border-color: #0d6efd; color: white; }
-        #columna-detalles { background-color: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 1px 5px rgba(0,0,0,0.08); min-height: 500px; }
-        .card-depreciacion { border-left: 4px solid #0d6efd; }
-        .footer-custom {
-            font-size: 0.9rem; background-color: #f8f9fa; 
-            border-top: 1px solid #dee2e6; padding: 1rem 0; margin-top: auto;
-        }
-        .footer-custom a i { color: #6c757d; transition: color 0.2s; }
-        .footer-custom a i:hover { color: #0d6efd !important; }
-    </style>
 </head>
-<body>
+<body class="page-depreciacion">
 <div class="top-bar-custom">
     <div class="logo-container-top">
         <a href="menu.php" title="Ir a Inicio"><img src="imagenes/logo.png" alt="Logo"></a>

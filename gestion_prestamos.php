@@ -393,78 +393,10 @@ if (isset($_GET['error_devolucion_prestamo']) && $_GET['error_devolucion_prestam
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
     <link rel="icon" type="image/x-icon" href="imagenes/icono.ico">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    
-    <style>
-        html {
-            height: 100%;
-        }
-
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            padding-top: 110px; 
-            background-color: #eef2f5; 
-            font-size: 0.92rem;
-            
-            /* Reglas para el Sticky Footer */
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-        }
-
-        .container-main {
-            flex-grow: 1; /* Hace que este contenedor crezca */
-        }
-
-        .top-bar-custom { position: fixed; top: 0; left: 0; right: 0; z-index: 1030; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; padding: 0.5rem 1.5rem; background-color: #ffffff; border-bottom: 1px solid #dee2e6; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .logo-container-top img { height: 75px; width: auto; }
-        .user-info-top-container .user-info-top { font-size: 0.8rem; } 
-        .user-info-top-container .btn { font-size: 0.8rem; } 
-        .page-header-custom-area { }
-        h1.page-title { color: #0d6efd; font-weight: 600; font-size: 1.75rem; }
-        .card { border: none; box-shadow: 0 0 10px rgba(0,0,0,0.06); }
-        .card-header { background-color: #f8f9fa; border-bottom: 1px solid #dee2e6; font-weight: 500; color: #495057; font-size: 1.05rem; }
-        .table thead th { background-color: #4A5568; color: white; font-weight: 500; vertical-align: middle; font-size: 0.85rem; padding: 0.6rem 0.75rem; white-space: nowrap;}
-        .table tbody td { vertical-align: middle; font-size: 0.85rem; padding: 0.6rem 0.75rem; }
-        .form-label { font-weight: 500; color: #495057; font-size: 0.85rem; }
-        .action-icon { font-size: 1rem; text-decoration: none; margin-right: 0.3rem; }
-        
-        .responsable-actual-info, .estado-actual-info { 
-            background-color: #e9ecef; padding: 0.375rem 0.75rem; border-radius: 0.25rem;
-            font-size: 0.9em; color: #495057; display: block; 
-            min-height: calc(1.5em + 0.75rem + 2px); line-height: 1.5;
-        }
-        
-        #area_info_prestador .form-label { margin-bottom: 0.2rem; } 
-
-        .footer-custom {
-            font-size: 0.9rem; 
-            background-color: #f8f9fa; 
-            border-top: 1px solid #dee2e6; 
-            padding: 1rem 0;
-            margin-top: auto; /* Importante para flexbox */
-        }
-        .footer-custom a i { 
-            color: #6c757d; 
-            transition: color 0.2s ease-in-out; 
-        }
-        .footer-custom a i:hover { 
-            color: #0d6efd !important; 
-        }
-
-        @media (max-width: 575.98px) {
-            body { padding-top: 150px; } 
-            .top-bar-custom { flex-direction: column; padding: 0.75rem 1rem; }
-            .logo-container-top { margin-bottom: 0.5rem; text-align: center; width: 100%; }
-            .user-info-top-container { display: flex; flex-direction: column; align-items: center; width: 100%; text-align: center; }
-            .user-info-top-container .user-info-top { margin-right: 0; margin-bottom: 0.5rem; }
-            h1.page-title { font-size: 1.4rem !important; margin-top: 0.5rem; margin-bottom: 0.75rem;}
-            .page-header-custom-area .btn { margin-bottom: 0.5rem; }
-            .page-header-custom-area > div:last-child .btn { margin-bottom: 0; }
-        }
-    </style>
     </head>
-<body>
+<body class="page-prestamos">
 <div class="top-bar-custom">
     <div class="logo-container-top"><a href="menu.php"><img src="imagenes/logo.png" alt="Logo"></a></div>
     <div class="user-info-top-container d-flex align-items-center">

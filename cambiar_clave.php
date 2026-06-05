@@ -95,30 +95,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && $cedula_usuario_sesion && empty($err
     <meta charset="UTF-8">
     <title>Cambiar Contraseña - Inventario</title>
     <link rel="icon" type="image/x-icon" href="imagenes/icono.ico">
+    <link rel="stylesheet" href="assets/css/style.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <style>
-        body { 
-            background-color: #ffffff !important; 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            padding-top: 80px; /* Espacio para la barra superior fija */
-        }
-        .top-bar-custom {
-            position: fixed; top: 0; left: 0; right: 0; z-index: 1030;
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 0.5rem 1.5rem; background-color: #f8f9fa; 
-            border-bottom: 1px solid #dee2e6; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-        .logo-container-top img { width: auto; height: 75px; object-fit: contain; margin-right: 15px; }
-        .user-info-top { font-size: 0.9rem; }
-        
-        .container-main { margin-top: 20px; margin-bottom: 40px; max-width: 600px; }
-        .page-header-title { color: #191970; font-weight: 600; }
-        .card.form-card { box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid #e0e0e0; }
-        .form-label { font-weight: 500; color: #495057; }
-    </style>
 </head>
-<body>
+<body class="page-cambiar-clave">
 
 <div class="top-bar-custom">
     <div class="logo-container-top">

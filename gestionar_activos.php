@@ -197,19 +197,10 @@ if (isset($_GET['error_creacion_tipo']) && $_GET['error_creacion_tipo'] == '1') 
     <title>Gestionar Tipos de Activo</title>
     <link rel="icon" type="image/x-icon" href="imagenes/icono.ico">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding-top: 110px; background-color: #eef2f5; font-size: 0.92rem; }
-        .top-bar-custom { position: fixed; top: 0; left: 0; right: 0; z-index: 1030; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; padding: 0.5rem 1.5rem; background-color: #ffffff; border-bottom: 1px solid #dee2e6; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .logo-container-top img { height: 75px; width: auto; }
-        h1.page-title { color: #0d6efd; font-weight: 600; font-size: 1.75rem; }
-        .card { border: none; box-shadow: 0 0 10px rgba(0,0,0,0.06); }
-        .card-header { background-color: #f8f9fa; border-bottom: 1px solid #dee2e6; font-weight: 500; color: #495057; }
-        .table thead th { background-color: #4A5568; color: white; font-weight: 500; }
-        .badge-cat { font-size: 0.85em; font-weight: normal; background-color: #e2e8f0; color: #1e293b; border: 1px solid #cbd5e1; }
-    </style>
 </head>
-<body>
+<body class="page-gestionar-tipos">
 <div class="top-bar-custom">
     <div class="logo-container-top"><a href="menu.php"><img src="imagenes/logo.png" alt="Logo"></a></div>
     <div class="top-bar-user-info">

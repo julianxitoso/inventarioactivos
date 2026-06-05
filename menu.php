@@ -21,107 +21,11 @@ $rol_usuario_actual_sesion = $_SESSION['rol_usuario'] ?? 'Desconocido';
     <meta name="viewport" content="width=device-width, initial-scale=1"> 
     <title>Menú Principal - Inventario TI</title>
     <link rel="icon" type="image/x-icon" sizes="96x96" href="imagenes/icono.ico">
+    <link rel="stylesheet" href="assets/css/style.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <style>
-        html, body {
-            height: 100%; 
-        }
-        body { 
-            background-color: #ffffff !important;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            padding-top: 95px; 
-            display: flex; 
-            flex-direction: column; 
-            min-height: 100vh; 
-        }
-        .top-bar-custom {
-            position: fixed; top: 0; left: 0; right: 0; z-index: 1030;
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 0.5rem 1.5rem; background-color: #f8f9fa;
-            border-bottom: 1px solid #dee2e6; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-        .logo-container-top img { width: auto; height: 75px; object-fit: contain; margin-right: 15px; }
-        .user-info-top { font-size: 0.9rem; }
-        main.container-main { margin-top: 20px; margin-bottom: 40px; flex-grow: 1; }
-        .page-header-title { color: #191970; }
-        .card-link { text-decoration: none; }
-        .menu-card {
-            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-            border: 1px solid #e0e0e0; border-radius: 0.5rem; display: flex; 
-            flex-direction: column; background-color: #ffffff; 
-        }
-        .menu-card:hover { transform: translateY(-5px); box-shadow: 0 0.5rem 1.5rem rgba(0,0,0,0.1); }
-        .menu-card .card-body { 
-            text-align: center; padding: 1.0rem; flex-grow: 1; 
-            display: flex; flex-direction: column;
-            justify-content: center; align-items: center;
-        }
-        .menu-card i { font-size: 2.0rem; margin-bottom: 0.75rem; display: block; }
-        .menu-card .card-title {
-            font-weight: 500; color: #333; margin-bottom: 0.5rem; font-size: 1rem; 
-        }
-        .menu-card .card-text { font-size: 0.8rem; color: #555; min-height: 35px; }
-        .btn-change-password { color: #6c757d; text-decoration: none; font-size: 1.2rem; margin-right: 0.75rem; }
-        .btn-change-password:hover { color: #0d6efd; }
-
-        .footer-custom {
-            font-size: 0.9rem; background-color: #f8f9fa; 
-            border-top: 1px solid #dee2e6; 
-        }
-        .footer-custom a i { color: #6c757d; transition: color 0.2s ease-in-out; }
-        .footer-custom a i:hover { color: #0d6efd !important; }
-
-        /* ESTILOS PARA EL CHATBOT */
-        #chatbot-button {
-            position: fixed; bottom: 25px; right: 25px; width: 60px; height: 60px;
-            background-color: #007bff; color: white; border-radius: 50%;
-            display: flex; justify-content: center; align-items: center;
-            cursor: pointer; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-            z-index: 999; transition: transform 0.2s ease-in-out;
-        }
-        #chatbot-button:hover { transform: scale(1.1); }
-        #chatbot-container {
-            position: fixed; bottom: 95px; right: 25px; width: 370px; 
-            height: 70vh; max-height: 500px; background-color: white;
-            border-radius: 15px; box-shadow: 0 8px 20px rgba(0,0,0,0.15); 
-            display: none; flex-direction: column; overflow: hidden; z-index: 1000;
-            border: 1px solid #dee2e6; 
-        }
-        #chatbot-container.visible { display: flex; }
-        #chatbot-header {
-            background-color: #007bff; color: white; padding: 10px 15px;
-            font-weight: bold; display: flex; justify-content: space-between; align-items: center;
-            border-bottom: 1px solid #0056b3; 
-        }
-        #chatbot-header-content { 
-            display: flex;
-            align-items: center;
-        }
-        #chatbot-header-content img { 
-            width: 52px; 
-            height: 52px; 
-            border-radius: 50%; 
-            margin-right: 10px;
-            border: 2px solid #ffffff; 
-            object-fit: cover; 
-            box-shadow: 0 1px 3px rgba(0,0,0,0.2); 
-        }
-        #chatbot-header-content span { 
-            font-size: 1.1rem;
-        }
-        #chatbot-close-button {
-            cursor: pointer; font-size: 24px; font-weight: bold;
-            padding: 0 5px; 
-            line-height: 1;
-        }
-        #chatbot-close-button:hover {
-            color: #e9ecef;
-        }
-        #chatbot-iframe { width: 100%; height: 100%; border: none; }
-    </style>
 </head>
-<body>
+<body class="page-menu">
     <div class="top-bar-custom">
         <div class="logo-container-top">
             <a href="menu.php" title="Ir a Inicio">

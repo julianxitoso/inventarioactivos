@@ -88,25 +88,10 @@ while($row = $res_actuales->fetch_assoc()) {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Permisos: <?= htmlspecialchars($rol_info['nombre_rol']) ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <style>
-        body { background-color: #f4f6f9; padding-top: 40px; padding-bottom: 80px; }
-        .card-category { border: none; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; border-radius: 12px; transition: transform 0.2s; }
-        .card-category:hover { transform: translateY(-2px); }
-        .category-header { background: #fff; padding: 15px 20px; border-bottom: 2px solid #f0f0f0; border-radius: 12px 12px 0 0; display: flex; align-items: center; }
-        .category-title { font-weight: 700; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 1px; color: #555; margin: 0; }
-        .category-icon { margin-right: 10px; font-size: 1.1rem; color: #0d6efd; }
-        .permiso-row { padding: 12px 20px; border-bottom: 1px solid #f8f9fa; display: flex; align-items: center; justify-content: space-between; transition: background 0.2s; }
-        .permiso-row:hover { background-color: #fcfcfc; }
-        .permiso-row:last-child { border-bottom: none; }
-        .form-check-input { cursor: pointer; width: 3em; height: 1.5em; }
-        .permiso-label { cursor: pointer; flex-grow: 1; margin-left: 15px; }
-        .permiso-name { font-weight: 600; color: #333; display: block; }
-        .permiso-key { font-size: 0.75rem; color: #999; font-family: monospace; }
-        .floating-save { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; padding: 15px; box-shadow: 0 -5px 20px rgba(0,0,0,0.1); z-index: 1000; text-align: center; border-top: 1px solid #e0e0e0; }
-    </style>
 </head>
-<body>
+<body class="page-editar-rol">
 
 <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-4">

@@ -193,36 +193,10 @@ if (isset($_GET['error_creacion_rol']) && $_GET['error_creacion_rol'] == '1' && 
     <title>Gestionar Roles</title>
     <link rel="icon" type="image/x-icon" href="imagenes/icono.ico">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding-top: 110px; background-color: #eef2f5; font-size: 0.92rem; }
-        .top-bar-custom { position: fixed; top: 0; left: 0; right: 0; z-index: 1030; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; padding: 0.5rem 1.5rem; background-color: #ffffff; border-bottom: 1px solid #dee2e6; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .logo-container-top img { height: 75px; width: auto; }
-        .top-bar-user-info .navbar-text { font-size: 0.8rem; }
-        .top-bar-user-info .btn { font-size: 0.8rem; }
-        .page-header-custom-area { /* Contenedor del título y botones */ }
-        h1.page-title { color: #0d6efd; font-weight: 600; font-size: 1.75rem; }
-        .card { border: none; box-shadow: 0 0 10px rgba(0,0,0,0.06); }
-        .card-header { background-color: #f8f9fa; border-bottom: 1px solid #dee2e6; font-weight: 500; color: #495057; font-size: 1.05rem; }
-        .table thead th { background-color: #4A5568; color: white; font-weight: 500; vertical-align: middle; font-size: 0.85rem; padding: 0.6rem 0.75rem; white-space: nowrap;}
-        .table tbody td { vertical-align: middle; font-size: 0.85rem; padding: 0.6rem 0.75rem; }
-        .form-label { font-weight: 500; color: #495057; font-size: 0.85rem; }
-        .container.mt-4 {max-width: 992px;} /* Ancho del contenedor principal */
-        .action-icon { font-size: 1rem; text-decoration: none; margin-right: 0.3rem; }
-
-        @media (max-width: 575.98px) { /* xs screens */
-            body { padding-top: 150px; } 
-            .top-bar-custom { flex-direction: column; padding: 0.75rem 1rem; }
-            .logo-container-top { margin-bottom: 0.5rem; text-align: center; width: 100%; }
-            .top-bar-user-info { display: flex; flex-direction: column; align-items: center; width: 100%; text-align: center; }
-            .top-bar-user-info .navbar-text { margin-right: 0; margin-bottom: 0.5rem; }
-            h1.page-title { font-size: 1.4rem !important; margin-top: 0.5rem; margin-bottom: 0.75rem;}
-            .page-header-custom-area .btn { margin-bottom: 0.5rem; }
-            .page-header-custom-area > div:last-child .btn { margin-bottom: 0; }
-        }
-    </style>
 </head>
-<body>
+<body class="page-gestionar-roles">
 <div class="top-bar-custom">
     <div class="logo-container-top"><a href="menu.php"><img src="imagenes/logo.png" height="75" alt="Logo"></a></div>
     <div class="top-bar-user-info">

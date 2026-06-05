@@ -97,52 +97,10 @@ $progreso_ini = $total_items > 0 ? round(($procesados_ini / $total_items) * 100)
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ejecutando Auditoría</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <style>
-        body { padding-top: 70px; background-color: #f8f9fa; font-family: 'Segoe UI', sans-serif; padding-bottom: 80px; }
-        .top-bar-fixed { position: fixed; top: 0; left: 0; right: 0; z-index: 1030; background: #fff; border-bottom: 1px solid #dee2e6; padding: 10px 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .item-card { background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 10px; transition: all 0.2s; border-left: 5px solid #ccc; }
-        .item-card.status-Pendiente { border-left-color: #6c757d; }
-        .item-card.status-Encontrado { border-left-color: #198754; background-color: #f8fff9; }
-        .item-card.status-No_Encontrado { border-left-color: #dc3545; opacity: 0.8; }
-        .item-card.status-Malo { border-left-color: #ffc107; }
-        .btn-action { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; margin-left: 5px; }
-        .bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 10px; border-top: 1px solid #dee2e6; display: flex; justify-content: space-between; align-items: center; z-index: 1030; }
-        .info-label { font-weight: bold; color: #555; font-size: 0.9em; }
-        
-        .group-header { 
-            background-color: #e9ecef; 
-            padding: 8px 15px; 
-            border-radius: 5px; 
-            margin-top: 20px; 
-            margin-bottom: 10px; 
-            font-weight: bold; 
-            color: #495057; 
-            border-left: 4px solid #0d6efd;
-            display: flex;
-            align-items: center;
-        }
-        
-        /* Estilo para el input de novedad */
-        .input-novedad {
-            border: 1px solid #ced4da;
-            border-radius: 4px;
-            font-size: 0.85rem;
-            background-color: #fcfcfc;
-            transition: border-color 0.3s;
-        }
-        .input-novedad:focus {
-            background-color: #fff;
-            box-shadow: none;
-            border-color: #86b7fe;
-        }
-        .guardado-ok {
-            border-color: #198754 !important;
-            background-color: #f0fff4 !important;
-        }
-    </style>
 </head>
-<body>
+<body class="page-ejecutar-auditoria">
 
     <div class="top-bar-fixed">
         <div class="d-flex justify-content-between align-items-center mb-2">

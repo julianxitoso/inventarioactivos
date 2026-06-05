@@ -72,14 +72,10 @@ $categorias = $conexion->query("SELECT * FROM categorias_activo ORDER BY nombre_
     <meta charset="UTF-8">
     <title>Gestionar Categorías - Inventario TI</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <style>
-        body { padding-top: 80px; background-color: #f8f9fa; font-family: 'Segoe UI', sans-serif; }
-        .top-bar-custom { position: fixed; top: 0; left: 0; right: 0; z-index: 1030; background: #fff; border-bottom: 1px solid #dee2e6; padding: 0.5rem 1.5rem; display: flex; justify-content: space-between; align-items: center; }
-        .table-container { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-    </style>
 </head>
-<body>
+<body class="page-gestionar-categorias">
 
 <div class="top-bar-custom">
     <div><a href="menu.php"><img src="imagenes/logo.png" height="60" alt="Logo"></a></div>

@@ -117,48 +117,11 @@ unset($_SESSION['error_global']);
     <meta charset="UTF-8">
     <title>Registrar Activos por Lote</title>
     <link rel="icon" type="image/x-icon" href="imagenes/icono.ico">
+    <link rel="stylesheet" href="assets/css/style.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <style>
-        html { height: 100%; }
-        body { min-height: 100%; display: flex; flex-direction: column; background-color: #ffffff !important; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding-top: 80px; }
-        .container-main { flex-grow: 1; }
-        .top-bar-custom { position: fixed; top: 0; left: 0; right: 0; z-index: 1030; display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 1.5rem; background-color: #f8f9fa; border-bottom: 1px solid #dee2e6; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .logo-container-top img { width: auto; height: 75px; object-fit: contain; margin-right: 15px; }
-        .user-info-top { font-size: 0.9rem; }
-        .btn-principal, #btnGuardarTodo, #btnAgregarActivoTabla { background-color: #191970; border-color: #191970; color: #ffffff; }
-        .btn-principal:hover, #btnGuardarTodo:hover, #btnAgregarActivoTabla:hover { background-color: #111150; border-color: #111150; color: #ffffff; }
-        #infoModal .modal-header { background-color: #191970; color: #ffffff; }
-        #infoModal .modal-header .btn-close { filter: invert(1) grayscale(100%) brightness(200%); }
-        #infoModal .modal-title i { margin-right: 8px; }
-        .card.form-card { box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: none; }
-        .form-label { font-weight: 500; color: #495057; }
-        .form-section { border: 1px solid #e0e0e0; padding: 20px; border-radius: 8px; margin-bottom: 20px; background-color: #fff; }
-        .table-activos-agregados th { font-size: 0.9em; }
-        .table-activos-agregados td { font-size: 0.85em; vertical-align: middle; }
-        .star-rating { display: inline-block; direction: rtl; font-size: 0; }
-        .star-rating input[type="radio"] { display: none; }
-        .star-rating label.star-label { color: #ccc; font-size: 1.8rem; padding: 0 0.05em; cursor: pointer; display: inline-block; transition: color 0.2s ease-in-out; }
-        .star-rating input[type="radio"]:checked ~ label.star-label, .star-rating label.star-label:hover, .star-rating label.star-label:hover ~ label.star-label { color: #f5b301; }
-        .star-rating input[type="radio"]:checked + label.star-label:hover, .star-rating input[type="radio"]:checked ~ label.star-label:hover, .star-rating input[type="radio"]:checked ~ label.star-label:hover ~ label.star-label, .star-rating label.star-label:hover ~ input[type="radio"]:checked ~ label.star-label { color: #f5b301; }
-        .btn-remove-asset { font-size: 0.8em; padding: 0.2rem 0.5rem; }
-        #infoAplicacionesExistentes { font-size: 0.85em; }
-        input:read-only, select:disabled, input:disabled { background-color: #e9ecef; cursor: not-allowed; }
-        .rating-invalid {
-            border: 1px solid #dc3545; /* Color de peligro de Bootstrap */
-            border-radius: 8px;
-            padding: 5px;
-            box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25);
-        }
-        .footer-custom {
-            font-size: 0.9rem; background-color: #f8f9fa; 
-            border-top: 1px solid #dee2e6; 
-        }
-        .footer-custom a i { color: #6c757d; transition: color 0.2s ease-in-out; }
-        .footer-custom a i:hover { color: #0d6efd !important; }
-    </style>
 </head>
-<body>
+<body class="page-index">
 <div class="top-bar-custom">
     <div class="logo-container-top">
         <a href="menu.php" title="Ir a Inicio"><img src="imagenes/logo.png" alt="Logo ARPESOD ASOCIADOS SAS"></a>

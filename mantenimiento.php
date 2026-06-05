@@ -231,56 +231,10 @@ if(isset($conexion) && $conexion) {
     <title>Gestión de Mantenimiento</title>
     <link rel="icon" type="image/x-icon" href="imagenes/icono.ico">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    
-    <style>
-        html {
-            height: 100%;
-        }
-        body { 
-            background-color: #f4f7f6; 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            padding-top: 95px; 
-            display: flex; 
-            flex-direction: column; 
-            min-height:100vh; 
-        }
-        .main-content-area { 
-            flex-grow: 1; 
-        } 
-        .top-bar-custom { 
-            position: fixed; 
-            top: 0; 
-            left: 0; 
-            right: 0; 
-            z-index: 1030; 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            padding: 0.5rem 1.5rem; 
-            background-color: #ffffff; 
-            border-bottom: 1px solid #e0e0e0; 
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05); 
-        }
-        .logo-container-top img { height: 75px; }
-        .user-info-top { font-size: 0.9rem; }
-        .footer-custom { 
-            font-size: 0.9rem; 
-            background-color: #f8f9fa; 
-            border-top: 1px solid #dee2e6; 
-            padding: 1rem 0; 
-            margin-top: auto; 
-        }
-        .footer-custom a i { 
-            color: #6c757d; 
-            transition: color 0.2s; 
-        }
-        .footer-custom a i:hover { 
-            color: #0d6efd; 
-        }
-    </style>
     </head>
-<body>
+<body class="page-mantenimiento">
     <div class="top-bar-custom">
         <div class="logo-container-top">
             <a href="menu.php" title="Ir a Inicio"><img src="imagenes/logo.png" alt="Logo Empresa"></a>
