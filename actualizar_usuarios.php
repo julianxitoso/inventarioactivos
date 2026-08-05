@@ -5,19 +5,15 @@
 // ACCIONES: Crea, actualiza e inactiva usuarios.
 // =================================================================================
 
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
-set_time_limit(300); // Aumentar el tiempo de ejecución a 5 minutos
-
 session_start();
 // La autenticación debe ser lo primero que se ejecute.
 require_once __DIR__ . '/backend/auth_check.php';
 verificar_permiso_o_morir('ver_usuarios'); // Solo un admin puede hacer esto
 
 // Habilitar errores después de la seguridad para no interferir con las redirecciones.
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
-set_time_limit(300); // Aumentar el tiempo de ejecución a 5 minutos
+ini_set('display_errors', 1); // Solo para depuración
+error_reporting(E_ALL); // Solo para depuración
+set_time_limit(300); // Aumentar el tiempo de ejecución a 5 minutos si es necesario
 
 require_once __DIR__ . '/backend/db.php';
 require_once __DIR__ . '/vendor/autoload.php';
