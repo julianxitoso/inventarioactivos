@@ -9,6 +9,10 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
+session_start();
+require_once __DIR__ . '/backend/auth_check.php';
+verificar_permiso_o_morir('crear_activo'); // Solo usuarios con permiso de crear pueden importar
+
 require_once __DIR__ . '/backend/db.php'; // Asegúrate de que esta ruta sea correcta
 require_once __DIR__ . '/vendor/autoload.php'; // Carga de PhpSpreadsheet
 
