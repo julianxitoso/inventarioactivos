@@ -5,18 +5,19 @@
 // ACCIONES: Crea, actualiza e inactiva usuarios.
 // =================================================================================
 
-session_start();
-// La autenticación debe ser lo primero que se ejecute.
-require_once __DIR__ . '/backend/auth_check.php';
-verificar_permiso_o_morir('ver_usuarios'); // Solo un admin puede hacer esto
+// --- ORDEN DE CARGA CORREGIDO ---
+// 1. Habilitar errores y configuraciones de PHP
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+set_time_limit(300);
 
-// Habilitar errores después de la seguridad para no interferir con las redirecciones.
-ini_set('display_errors', 1); // Solo para depuración
-error_reporting(E_ALL); // Solo para depuración
-set_time_limit(300); // Aumentar el tiempo de ejecución a 5 minutos si es necesario
-
+// 2. Cargar la base de datos y las librerías PRIMERO
 require_once __DIR__ . '/backend/db.php';
 require_once __DIR__ . '/vendor/autoload.php';
+
+// 3. Ahora sí, ejecutar la comprobación de seguridad, que depende de la BD
+require_once __DIR__ . '/backend/auth_check.php';
+verificar_permiso_o_morir('ver_usuarios');
 
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
