@@ -5,15 +5,16 @@
 // ACCIONES: Crea, actualiza e inactiva usuarios.
 // =================================================================================
 
-session_start();
-// La autenticación debe ser lo primero que se ejecute.
-require_once __DIR__ . '/backend/auth_check.php';
-verificar_permiso_o_morir('ver_usuarios'); // Solo un admin puede hacer esto
 
 // Habilitar errores después de la seguridad para no interferir con las redirecciones.
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 set_time_limit(300); // Aumentar el tiempo de ejecución a 5 minutos
+
+session_start();
+// La autenticación debe ser lo primero que se ejecute.
+require_once __DIR__ . '/backend/auth_check.php';
+verificar_permiso_o_morir('ver_usuarios'); // Solo un admin puede hacer esto
 
 require_once __DIR__ . '/backend/db.php';
 require_once __DIR__ . '/vendor/autoload.php';
@@ -229,14 +230,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['excel_file_users']))
                     </div>
                     <button type="submit" class="btn btn-primary w-100"><i class="bi bi-arrow-repeat me-2"></i> Iniciar Sincronización</button>
                 </form>
-
-                <div class="mt-4 pt-3 border-top">
-                    <h5 class="mb-3">Descargar Plantilla Maestra</h5>
-                    <p class="text-muted small">Descargue la plantilla para asegurarse de que su archivo Excel tenga el formato correcto.</p>
-                    <a href="plantillas/plantilla_maestra_usuarios.xlsx" class="btn btn-info" download>
-                        <i class="bi bi-download me-2"></i> Descargar Plantilla de Usuarios
-                    </a>
-                </div>
             </div>
         </div>
         <div class="text-center mt-3">
