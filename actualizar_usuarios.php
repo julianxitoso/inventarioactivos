@@ -5,20 +5,18 @@
 // ACCIONES: Crea, actualiza e inactiva usuarios.
 // =================================================================================
 
-// --- ORDEN DE CARGA CORREGIDO ---
-// 1. Habilitar errores y configuraciones de PHP
+session_start(); // Asegurar que la sesión esté iniciada antes que nada.
+
+// Cargar el sistema de autenticación. Este se encargará de cargar la BD y otras dependencias.
+require_once __DIR__ . '/backend/auth_check.php';
+verificar_permiso_o_morir('ver_usuarios');
+
+// Habilitar errores y configuraciones de PHP DESPUÉS de la seguridad.
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 set_time_limit(300);
 
-// 2. Cargar la base de datos y las librerías PRIMERO
-require_once __DIR__ . '/backend/db.php';
-require_once __DIR__ . '/vendor/autoload.php';
-
-// 3. Ahora sí, ejecutar la comprobación de seguridad, que depende de la BD
-require_once __DIR__ . '/backend/auth_check.php';
-verificar_permiso_o_morir('ver_usuarios');
-
+// Las dependencias como PhpSpreadsheet ya están cargadas a través de auth_check -> db -> vendor/autoload
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
 if (!isset($conexion) || !$conexion || (is_object($conexion) && property_exists($conexion, 'connect_error') && $conexion->connect_error)) {
@@ -230,6 +228,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['excel_file_users']))
                     </div>
                     <button type="submit" class="btn btn-primary w-100"><i class="bi bi-arrow-repeat me-2"></i> Iniciar Sincronización</button>
                 </form>
+
+                <div class="mt-4 pt-3 border-top">
+                    <h5 class="mb-3">Descargar Plantilla Maestra</h5>
+                    <p class="text-muted small">Descargue la plantilla para asegurarse de que su archivo Excel tenga el formato correcto.</p>
+                    <a href="plantillas/plantilla_maestra_usuarios.xlsx" class="btn btn-info" download>
+                        <i class="bi bi-download me-2"></i> Descargar Plantilla de Usuarios
+                    </a>
+                </div>
             </div>
         </div>
         <div class="text-center mt-3">
