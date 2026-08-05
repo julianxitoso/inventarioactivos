@@ -5,16 +5,16 @@
 // ACCIONES: Crea, actualiza e inactiva usuarios.
 // =================================================================================
 
-session_start(); // Asegurar que la sesión esté iniciada antes que nada.
+session_start();
 
 // Cargar el sistema de autenticación. Este se encargará de cargar la BD y otras dependencias.
 require_once __DIR__ . '/backend/auth_check.php';
 verificar_permiso_o_morir('ver_usuarios');
 
 // Habilitar errores y configuraciones de PHP DESPUÉS de la seguridad.
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
-set_time_limit(300);
+ini_set('display_errors', 1); // Solo para depuración
+error_reporting(E_ALL); // Solo para depuración
+set_time_limit(300); // Aumentar el tiempo de ejecución a 5 minutos si es necesario
 
 // Las dependencias como PhpSpreadsheet ya están cargadas a través de auth_check -> db -> vendor/autoload
 use PhpOffice\PhpSpreadsheet\IOFactory;
