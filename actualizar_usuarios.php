@@ -5,6 +5,9 @@
 // ACCIONES: Crea, actualiza e inactiva usuarios.
 // =================================================================================
 
+// Las dependencias como PhpSpreadsheet ya están cargadas a través de auth_check -> db -> vendor/autoload
+use PhpOffice\PhpSpreadsheet\IOFactory;
+
 session_start();
 
 // Cargar el sistema de autenticación. Este se encargará de cargar la BD y otras dependencias.
@@ -15,9 +18,6 @@ verificar_permiso_o_morir('ver_usuarios');
 ini_set('display_errors', 1); // Solo para depuración
 error_reporting(E_ALL); // Solo para depuración
 set_time_limit(300); // Aumentar el tiempo de ejecución a 5 minutos si es necesario
-
-// Las dependencias como PhpSpreadsheet ya están cargadas a través de auth_check -> db -> vendor/autoload
-use PhpOffice\PhpSpreadsheet\IOFactory;
 
 if (!isset($conexion) || !$conexion || (is_object($conexion) && property_exists($conexion, 'connect_error') && $conexion->connect_error)) {
     die("Error crítico de conexión a la base de datos.");
