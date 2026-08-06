@@ -2,30 +2,45 @@
 // =================================================================================
 // ARCHIVO: actualizar_usuarios.php
 // DESCRIPCIÓN: Script para sincronizar la tabla `usuarios` con un archivo maestro Excel.
-// ACCIONES: Crea, actualiza e inactiva usuarios.
 // =================================================================================
 
-// Las dependencias como PhpSpreadsheet ya están cargadas a través de auth_check -> db -> vendor/autoload
+// 1. IMPORTACIONES (Debe ser estricta y absolutamente lo primero)
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
+// 2. CONFIGURACIÓN DE ERRORES AL MÁXIMO (Justo después del use)
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+set_time_limit(300);
+
+// 3. INICIO DE SESIÓN
 session_start();
 
-// Cargar el sistema de autenticación. Este se encargará de cargar la BD y otras dependencias.
+// 4. DEPENDENCIAS Y SEGURIDAD
 require_once __DIR__ . '/backend/auth_check.php';
 verificar_permiso_o_morir('ver_usuarios');
 
-// Habilitar errores y configuraciones de PHP DESPUÉS de la seguridad.
-ini_set('display_errors', 1); // Solo para depuración
-error_reporting(E_ALL); // Solo para depuración
-set_time_limit(300); // Aumentar el tiempo de ejecución a 5 minutos si es necesario
+// CARGAR BD EXPLICITAMENTE (Por si auth_check no lo hace)
+require_once __DIR__ . '/backend/db.php';
 
+// CARGAR AUTOLOAD DE COMPOSER (Obligatorio para que PhpSpreadsheet funcione)
+$autoloadPath = __DIR__ . '/vendor/autoload.php';
+if (file_exists($autoloadPath)) {
+    require_once $autoloadPath;
+} else {
+    die("Error: No se encontró vendor/autoload.php. Asegúrese de haber instalado PhpSpreadsheet.");
+}
+
+// 5. VALIDACIÓN DE CONEXIÓN
 if (!isset($conexion) || !$conexion || (is_object($conexion) && property_exists($conexion, 'connect_error') && $conexion->connect_error)) {
     die("Error crítico de conexión a la base de datos.");
 }
 $conexion->set_charset("utf8mb4");
 
+// 6. CREACIÓN DE DIRECTORIO SEGURA PARA CPANEL (0755, NO 0777)
 $uploadDir = __DIR__ . '/uploads/';
-if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
+if (!is_dir($uploadDir)) {
+    mkdir($uploadDir, 0755, true); 
+}
 
 $mensaje = "";
 $reporte = [
@@ -37,6 +52,7 @@ $reporte = [
     'errores' => []
 ];
 
+// 7. PROCESAMIENTO DEL EXCEL
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['excel_file_users'])) {
     $file = $_FILES['excel_file_users'];
 
@@ -46,17 +62,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['excel_file_users']))
         $filePath = $uploadDir . 'sync_users_' . basename($file['name']);
         if (move_uploaded_file($file['tmp_name'], $filePath)) {
             try {
-                // --- PASO 1: Cargar datos de referencia (roles, cargos, etc.) en memoria ---
+                // --- PASO 1: Cargar datos de referencia ---
                 $roles = array_column($conexion->query("SELECT id_rol, nombre_rol FROM roles")->fetch_all(MYSQLI_ASSOC), 'id_rol', 'nombre_rol');
                 $cargos = array_column($conexion->query("SELECT id_cargo, nombre_cargo FROM cargos")->fetch_all(MYSQLI_ASSOC), 'id_cargo', 'nombre_cargo');
                 $regionales = array_column($conexion->query("SELECT id_regional, nombre_regional FROM regionales")->fetch_all(MYSQLI_ASSOC), 'id_regional', 'nombre_regional');
                 $centros_costo = array_column($conexion->query("SELECT id_centro_costo, nombre_centro_costo FROM centros_costo")->fetch_all(MYSQLI_ASSOC), 'id_centro_costo', 'nombre_centro_costo');
 
-                // --- PASO 2: Cargar usuarios del Excel en un array ---
+                // --- PASO 2: Cargar usuarios del Excel ---
                 $spreadsheet = IOFactory::load($filePath);
                 $sheet = $spreadsheet->getActiveSheet();
                 $highestRow = $sheet->getHighestRow();
                 $usuarios_excel = [];
+                
                 for ($row = 2; $row <= $highestRow; $row++) {
                     $cedula = trim($sheet->getCell('A' . $row)->getValue() ?? '');
                     if (empty($cedula)) continue;
@@ -74,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['excel_file_users']))
                 }
                 $reporte['leidos_excel'] = count($usuarios_excel);
 
-                // --- PASO 3: Cargar usuarios de la BD en un array ---
+                // --- PASO 3: Cargar usuarios de la BD ---
                 $usuarios_db_raw = $conexion->query("SELECT id, usuario, nombre_completo, email, rol, id_cargo, id_centro_costo, regional, empresa, activo FROM usuarios")->fetch_all(MYSQLI_ASSOC);
                 $usuarios_db = [];
                 foreach ($usuarios_db_raw as $user) {
@@ -88,10 +105,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['excel_file_users']))
                 $stmt_update = $conexion->prepare("UPDATE usuarios SET nombre_completo=?, email=?, rol=?, id_cargo=?, id_centro_costo=?, regional=?, empresa=?, activo=1 WHERE id=?");
 
                 foreach ($usuarios_excel as $cedula => $data_excel) {
-                    // Validar y obtener IDs de las tablas de referencia
                     $id_rol = $roles[$data_excel['nombre_rol']] ?? null;
                     $id_cargo = $cargos[$data_excel['nombre_cargo']] ?? null;
-                    $id_regional_nombre = $data_excel['nombre_regional']; // El nombre se guarda directo
+                    $id_regional_nombre = $data_excel['nombre_regional']; 
                     $id_centro_costo = $centros_costo[$data_excel['nombre_centro_costo']] ?? null;
 
                     if (!$id_rol) { $reporte['errores'][] = "Fila {$data_excel['fila']} (C.C: $cedula): Rol '{$data_excel['nombre_rol']}' no existe."; continue; }
@@ -99,21 +115,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['excel_file_users']))
                     if (!$id_centro_costo) { $reporte['errores'][] = "Fila {$data_excel['fila']} (C.C: $cedula): Centro de Costo '{$data_excel['nombre_centro_costo']}' no existe."; continue; }
 
                     if (!isset($usuarios_db[$cedula])) {
-                        // CREAR USUARIO
+                        // CREAR
                         $clave = !empty($data_excel['clave_temporal']) ? $data_excel['clave_temporal'] : $cedula;
                         $hash_clave = password_hash($clave, PASSWORD_DEFAULT);
                         $stmt_insert->bind_param("ssssiiiss", $cedula, $data_excel['nombre_completo'], $data_excel['email'], $hash_clave, $data_excel['nombre_rol'], $id_cargo, $id_centro_costo, $id_regional_nombre, $data_excel['nombre_empresa']);
+                        
                         if ($stmt_insert->execute()) {
                             $reporte['creados']++;
                         } else {
                             $reporte['errores'][] = "Fila {$data_excel['fila']} (C.C: $cedula): Error al crear - " . $stmt_insert->error;
                         }
                     } else {
-                        // ACTUALIZAR USUARIO
+                        // ACTUALIZAR
                         $user_db = $usuarios_db[$cedula];
-                        // Comprobar si hay cambios
                         if ($user_db['nombre_completo'] != $data_excel['nombre_completo'] || $user_db['email'] != $data_excel['email'] || $user_db['rol'] != $data_excel['nombre_rol'] || $user_db['id_cargo'] != $id_cargo || $user_db['id_centro_costo'] != $id_centro_costo || $user_db['regional'] != $id_regional_nombre || $user_db['empresa'] != $data_excel['nombre_empresa'] || $user_db['activo'] != 1) {
                             $stmt_update->bind_param("sssiissi", $data_excel['nombre_completo'], $data_excel['email'], $data_excel['nombre_rol'], $id_cargo, $id_centro_costo, $id_regional_nombre, $data_excel['nombre_empresa'], $user_db['id']);
+                            
                             if ($stmt_update->execute()) {
                                 $reporte['actualizados']++;
                             } else {
@@ -127,11 +144,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['excel_file_users']))
                 $stmt_insert->close();
                 $stmt_update->close();
 
-                // --- PASO 5: Iterar sobre usuarios de la BD para INACTIVAR ---
+                // --- PASO 5: INACTIVAR ---
                 $stmt_inactivate = $conexion->prepare("UPDATE usuarios SET activo = 0 WHERE id = ?");
                 foreach ($usuarios_db as $cedula => $user_db) {
                     if (!isset($usuarios_excel[$cedula]) && $user_db['activo'] == 1) {
-                        // INACTIVAR USUARIO
                         $stmt_inactivate->bind_param("i", $user_db['id']);
                         if ($stmt_inactivate->execute()) {
                             $reporte['inactivados']++;
@@ -151,7 +167,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['excel_file_users']))
                 }
 
             } catch (Exception $e) {
-                if ($conexion->in_transaction) $conexion->rollback();
+                // Corrección: mysqli no tiene propiedad in_transaction, se llama directo al rollback
+                $conexion->rollback(); 
                 $mensaje = "<div class='alert alert-danger'>Error crítico durante el proceso: " . htmlspecialchars($e->getMessage()) . "</div>";
             } finally {
                 if (file_exists($filePath)) unlink($filePath);
