@@ -74,7 +74,10 @@ while($row = $res_permisos->fetch_assoc()) {
 
 // Permisos actuales del rol (para marcar los checks)
 // Usamos id_rol
-$res_actuales = $conexion->query("SELECT id_permiso FROM rol_permisos WHERE id_rol = $id_rol");
+$stmt_actuales = $conexion->prepare("SELECT id_permiso FROM rol_permisos WHERE id_rol = ?");
+$stmt_actuales->bind_param("i", $id_rol);
+$stmt_actuales->execute();
+$res_actuales = $stmt_actuales->get_result();
 $permisos_activos = [];
 while($row = $res_actuales->fetch_assoc()) {
     $permisos_activos[] = $row['id_permiso'];

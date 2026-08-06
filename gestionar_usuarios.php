@@ -279,8 +279,8 @@ if (isset($_GET['error_creacion'])) $abrir_modal_creacion_js = true;
                         <div class="col-6"><label class="form-label">Confirmar *</label><input type="password" class="form-control" name="confirmar_nueva_clave" required></div>
                     </div>
                     <div class="row mb-3">
-                        <div class="col-6"><label class="form-label">Cargo *</label><select class="form-select" name="nuevo_cargo" required><option value="">...</option><?php foreach($cargos_form as $c) echo "<option value='$c'>$c</option>"; ?></select></div>
-                        <div class="col-6"><label class="form-label">Rol *</label><select class="form-select" name="nuevo_rol" required><?php foreach($roles_form as $r) echo "<option value='$r'>".ucfirst($r)."</option>"; ?></select></div>
+                        <div class="col-6"><label class="form-label">Cargo *</label><select class="form-select" name="nuevo_cargo" required><option value="">...</option><?php foreach($cargos_form as $c) { $sanitized_c = htmlspecialchars($c, ENT_QUOTES, 'UTF-8'); echo "<option value='{$sanitized_c}'>{$sanitized_c}</option>"; } ?></select></div>
+                        <div class="col-6"><label class="form-label">Rol *</label><select class="form-select" name="nuevo_rol" required><?php foreach($roles_form as $r) { $sanitized_r = htmlspecialchars($r, ENT_QUOTES, 'UTF-8'); echo "<option value='{$sanitized_r}'>".ucfirst($sanitized_r)."</option>"; } ?></select></div>
                     </div>
                     
                     <div class="row mb-3 bg-light p-2 rounded">
@@ -288,7 +288,11 @@ if (isset($_GET['error_creacion'])) $abrir_modal_creacion_js = true;
                             <label class="form-label">Regional</label>
                             <select class="form-select" id="nueva_regional" name="nueva_regional">
                                 <option value="">Seleccione...</option>
-                                <?php foreach($regionales_form as $reg) echo "<option value='{$reg['id_regional']}'>{$reg['nombre_regional']}</option>"; ?>
+                                <?php foreach($regionales_form as $reg) {
+                                    $id_regional_san = htmlspecialchars($reg['id_regional'], ENT_QUOTES, 'UTF-8');
+                                    $nombre_regional_san = htmlspecialchars($reg['nombre_regional'], ENT_QUOTES, 'UTF-8');
+                                    echo "<option value='{$id_regional_san}'>{$nombre_regional_san}</option>";
+                                } ?>
                             </select>
                         </div>
                         <div class="col-6">
@@ -297,7 +301,7 @@ if (isset($_GET['error_creacion'])) $abrir_modal_creacion_js = true;
                         </div>
                     </div>
 
-                    <div class="mb-3"><label class="form-label">Empresa</label><select class="form-select" name="nueva_empresa"><option value="">...</option><?php foreach($empresas_form as $e) echo "<option value='$e'>$e</option>"; ?></select></div>
+                    <div class="mb-3"><label class="form-label">Empresa</label><select class="form-select" name="nueva_empresa"><option value="">...</option><?php foreach($empresas_form as $e) { $sanitized_e = htmlspecialchars($e, ENT_QUOTES, 'UTF-8'); echo "<option value='{$sanitized_e}'>{$sanitized_e}</option>"; } ?></select></div>
                     <div class="form-check form-switch"><input class="form-check-input" type="checkbox" name="nuevo_activo" value="1" checked><label class="form-check-label">Activo</label></div>
                 </div>
                 <div class="modal-footer"><button type="submit" name="crear_usuario_submit" class="btn btn-primary">Crear</button></div>
@@ -315,20 +319,28 @@ if (isset($_GET['error_creacion'])) $abrir_modal_creacion_js = true;
                 <div class="modal-header bg-warning"><h5 class="modal-title">Editar Usuario</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body">
                     <div class="row mb-3">
-                        <div class="col-6"><label class="form-label">Cédula</label><input type="text" class="form-control" name="edit_usuario_login" value="<?= $usuario_para_editar['usuario'] ?>" required></div>
-                        <div class="col-6"><label class="form-label">Nombre</label><input type="text" class="form-control" name="edit_nombre_completo" value="<?= $usuario_para_editar['nombre_completo'] ?>" required></div>
+                        <div class="col-6"><label class="form-label">Cédula</label><input type="text" class="form-control" name="edit_usuario_login" value="<?= htmlspecialchars($usuario_para_editar['usuario'] ?? '', ENT_QUOTES, 'UTF-8') ?>" required></div>
+                        <div class="col-6"><label class="form-label">Nombre</label><input type="text" class="form-control" name="edit_nombre_completo" value="<?= htmlspecialchars($usuario_para_editar['nombre_completo'] ?? '', ENT_QUOTES, 'UTF-8') ?>" required></div>
                     </div>
                     <div class="row mb-3">
                         <div class="col-6">
                             <label class="form-label">Cargo</label>
                             <select class="form-select" name="edit_cargo" required>
-                                <?php foreach($cargos_form as $c) echo "<option value='$c' ".($usuario_para_editar['nombre_cargo']==$c?'selected':'').">$c</option>"; ?>
+                                <?php foreach($cargos_form as $c) {
+                                    $sanitized_c = htmlspecialchars($c, ENT_QUOTES, 'UTF-8');
+                                    $selected = ($usuario_para_editar['nombre_cargo'] ?? '') == $c ? 'selected' : '';
+                                    echo "<option value='{$sanitized_c}' {$selected}>{$sanitized_c}</option>";
+                                } ?>
                             </select>
                         </div>
                         <div class="col-6">
                             <label class="form-label">Rol</label>
                             <select class="form-select" name="edit_rol" required>
-                                <?php foreach($roles_form as $r) echo "<option value='$r' ".($usuario_para_editar['rol']==$r?'selected':'').">".ucfirst($r)."</option>"; ?>
+                                <?php foreach($roles_form as $r) {
+                                    $sanitized_r = htmlspecialchars($r, ENT_QUOTES, 'UTF-8');
+                                    $selected = ($usuario_para_editar['rol'] ?? '') == $r ? 'selected' : '';
+                                    echo "<option value='{$sanitized_r}' {$selected}>".ucfirst($sanitized_r)."</option>";
+                                } ?>
                             </select>
                         </div>
                     </div>
@@ -338,7 +350,12 @@ if (isset($_GET['error_creacion'])) $abrir_modal_creacion_js = true;
                             <label class="form-label">Regional</label>
                             <select class="form-select" id="edit_regional" name="edit_regional">
                                 <option value="">Seleccione...</option>
-                                <?php foreach($regionales_form as $reg) echo "<option value='{$reg['id_regional']}' ".($usuario_para_editar['id_regional_actual']==$reg['id_regional']?'selected':'').">{$reg['nombre_regional']}</option>"; ?>
+                                <?php foreach($regionales_form as $reg) {
+                                    $id_regional_san = htmlspecialchars($reg['id_regional'], ENT_QUOTES, 'UTF-8');
+                                    $nombre_regional_san = htmlspecialchars($reg['nombre_regional'], ENT_QUOTES, 'UTF-8');
+                                    $selected = ($usuario_para_editar['id_regional_actual'] ?? '') == $reg['id_regional'] ? 'selected' : '';
+                                    echo "<option value='{$id_regional_san}' {$selected}>{$nombre_regional_san}</option>";
+                                } ?>
                             </select>
                         </div>
                         <div class="col-6">
@@ -350,7 +367,11 @@ if (isset($_GET['error_creacion'])) $abrir_modal_creacion_js = true;
                     <div class="mb-3">
                         <label class="form-label">Empresa</label>
                         <select class="form-select" name="edit_empresa">
-                            <?php foreach($empresas_form as $e) echo "<option value='$e' ".($usuario_para_editar['empresa']==$e?'selected':'').">$e</option>"; ?>
+                            <?php foreach($empresas_form as $e) {
+                                $sanitized_e = htmlspecialchars($e, ENT_QUOTES, 'UTF-8');
+                                $selected = ($usuario_para_editar['empresa'] ?? '') == $e ? 'selected' : '';
+                                echo "<option value='{$sanitized_e}' {$selected}>{$sanitized_e}</option>";
+                            } ?>
                         </select>
                     </div>
 
