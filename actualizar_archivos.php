@@ -238,7 +238,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['excel_file_users']))
                 <?php endif; ?>
 
                 <h5 class="mt-4">Subir Archivo Maestro de Usuarios</h5>
-                <form action="actualizar_usuarios.php" method="post" enctype="multipart/form-data">
+                <form action="" method="post" enctype="multipart/form-data">
                     <div class="mb-3">
                         <label for="excel_file_users" class="form-label">Seleccione el archivo .xlsx:</label>
                         <input class="form-control" type="file" id="excel_file_users" name="excel_file_users" accept=".xlsx" required>
