@@ -62,11 +62,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['excel_file_users']))
         $filePath = $uploadDir . 'sync_users_' . basename($file['name']);
         if (move_uploaded_file($file['tmp_name'], $filePath)) {
             try {
-                // --- PASO 1: Cargar datos de referencia ---
-                $roles = array_column($conexion->query("SELECT id_rol, nombre_rol FROM roles")->fetch_all(MYSQLI_ASSOC), 'id_rol', 'nombre_rol');
-                $cargos = array_column($conexion->query("SELECT id_cargo, nombre_cargo FROM cargos")->fetch_all(MYSQLI_ASSOC), 'id_cargo', 'nombre_cargo');
-                $regionales = array_column($conexion->query("SELECT id_regional, nombre_regional FROM regionales")->fetch_all(MYSQLI_ASSOC), 'id_regional', 'nombre_regional');
-                $centros_costo = array_column($conexion->query("SELECT id_centro_costo, nombre_centro_costo FROM centros_costo")->fetch_all(MYSQLI_ASSOC), 'id_centro_costo', 'nombre_centro_costo');
+                // --- PASO 1: Cargar datos de referencia convirtiendo los nombres a MAYÚSCULAS ---
+                $roles = []; foreach ($conexion->query("SELECT id_rol, nombre_rol FROM roles")->fetch_all(MYSQLI_ASSOC) as $r) { $roles[mb_strtoupper(trim($r['nombre_rol']), 'UTF-8')] = $r['id_rol']; }
+                $cargos = []; foreach ($conexion->query("SELECT id_cargo, nombre_cargo FROM cargos")->fetch_all(MYSQLI_ASSOC) as $r) { $cargos[mb_strtoupper(trim($r['nombre_cargo']), 'UTF-8')] = $r['id_cargo']; }
+                $regionales = []; foreach ($conexion->query("SELECT id_regional, nombre_regional FROM regionales")->fetch_all(MYSQLI_ASSOC) as $r) { $regionales[mb_strtoupper(trim($r['nombre_regional']), 'UTF-8')] = $r['id_regional']; }
+                $centros_costo = []; foreach ($conexion->query("SELECT id_centro_costo, nombre_centro_costo FROM centros_costo")->fetch_all(MYSQLI_ASSOC) as $r) { $centros_costo[mb_strtoupper(trim($r['nombre_centro_costo']), 'UTF-8')] = $r['id_centro_costo']; }
 
                 // --- PASO 2: Cargar usuarios del Excel ---
                 $spreadsheet = IOFactory::load($filePath);
@@ -105,10 +105,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['excel_file_users']))
                 $stmt_update = $conexion->prepare("UPDATE usuarios SET nombre_completo=?, email=?, rol=?, id_cargo=?, id_centro_costo=?, regional=?, empresa=?, activo=1 WHERE id=?");
 
                 foreach ($usuarios_excel as $cedula => $data_excel) {
-                    $id_rol = $roles[$data_excel['nombre_rol']] ?? null;
-                    $id_cargo = $cargos[$data_excel['nombre_cargo']] ?? null;
-                    $id_regional_nombre = $data_excel['nombre_regional']; 
-                    $id_centro_costo = $centros_costo[$data_excel['nombre_centro_costo']] ?? null;
+                // Validar convirtiendo lo que viene del Excel a MAYÚSCULAS también
+                    $id_rol = $roles[mb_strtoupper($data_excel['nombre_rol'], 'UTF-8')] ?? null;
+                    $id_cargo = $cargos[mb_strtoupper($data_excel['nombre_cargo'], 'UTF-8')] ?? null;
+                    $id_centro_costo = $centros_costo[mb_strtoupper($data_excel['nombre_centro_costo'], 'UTF-8')] ?? null;
+                    $id_regional_nombre = $data_excel['nombre_regional']; // Este se queda igual para guardarlo
 
                     if (!$id_rol) { $reporte['errores'][] = "Fila {$data_excel['fila']} (C.C: $cedula): Rol '{$data_excel['nombre_rol']}' no existe."; continue; }
                     if (!$id_cargo) { $reporte['errores'][] = "Fila {$data_excel['fila']} (C.C: $cedula): Cargo '{$data_excel['nombre_cargo']}' no existe."; continue; }
