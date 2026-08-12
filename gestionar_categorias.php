@@ -17,13 +17,14 @@ $tipo_mensaje = "";
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
     $nombre = trim($_POST['nombre_categoria']);
     $desc = trim($_POST['descripcion']);
-    $cod = (int)$_POST['cod_contable'];
+    $cuenta_contable = trim($_POST['cuenta_contable']);
+    $nombre_cuenta = trim($_POST['nombre_cuenta']);
     $id = isset($_POST['id_categoria']) ? (int)$_POST['id_categoria'] : 0;
 
     if (!empty($nombre)) {
         if ($_POST['accion'] === 'crear') {
-            $stmt = $conexion->prepare("INSERT INTO categorias_activo (nombre_categoria, descripcion, cod_contable) VALUES (?, ?, ?)");
-            $stmt->bind_param("ssi", $nombre, $desc, $cod);
+            $stmt = $conexion->prepare("INSERT INTO categorias_activo (nombre_categoria, descripcion, cuenta_contable, nombre_cuenta) VALUES (?, ?, ?, ?)");
+            $stmt->bind_param("ssss", $nombre, $desc, $cuenta_contable, $nombre_cuenta);
             if ($stmt->execute()) {
                 $mensaje = "Categoría creada correctamente.";
                 $tipo_mensaje = "success";
@@ -32,8 +33,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
                 $tipo_mensaje = "danger";
             }
         } elseif ($_POST['accion'] === 'editar' && $id > 0) {
-            $stmt = $conexion->prepare("UPDATE categorias_activo SET nombre_categoria=?, descripcion=?, cod_contable=? WHERE id_categoria=?");
-            $stmt->bind_param("ssii", $nombre, $desc, $cod, $id);
+            $stmt = $conexion->prepare("UPDATE categorias_activo SET nombre_categoria=?, descripcion=?, cuenta_contable=?, nombre_cuenta=? WHERE id_categoria=?");
+            $stmt->bind_param("ssssi", $nombre, $desc, $cuenta_contable, $nombre_cuenta, $id);
             if ($stmt->execute()) {
                 $mensaje = "Categoría actualizada correctamente.";
                 $tipo_mensaje = "success";
@@ -106,7 +107,8 @@ $categorias = $conexion->query("SELECT * FROM categorias_activo ORDER BY nombre_
                 <tr>
                     <th>ID</th>
                     <th>Nombre Categoría</th>
-                    <th>Código Contable</th>
+                    <th>Cuenta Contable</th>
+                    <th>Nombre Cuenta</th>
                     <th>Descripción</th>
                     <th class="text-end">Acciones</th>
                 </tr>
@@ -117,13 +119,14 @@ $categorias = $conexion->query("SELECT * FROM categorias_activo ORDER BY nombre_
                         <tr>
                             <td><?= $row['id_categoria'] ?></td>
                             <td class="fw-bold"><?= htmlspecialchars($row['nombre_categoria']) ?></td>
-                            <td>
-                                <?php if($row['cod_contable'] > 0): ?>
-                                    <span class="badge bg-secondary"><?= $row['cod_contable'] ?></span>
+                             <td>
+                                <?php if(!empty($row['cuenta_contable'])): ?>
+                                    <span class="badge bg-secondary"><?= htmlspecialchars($row['cuenta_contable']) ?></span>
                                 <?php else: ?>
                                     <span class="text-muted small">N/A</span>
                                 <?php endif; ?>
                             </td>
+                            <td><?= htmlspecialchars($row['nombre_cuenta']) ?></td>
                             <td><?= htmlspecialchars($row['descripcion']) ?></td>
                             <td class="text-end">
                                 <button class="btn btn-sm btn-warning me-1" 
@@ -139,7 +142,7 @@ $categorias = $conexion->query("SELECT * FROM categorias_activo ORDER BY nombre_
                         </tr>
                     <?php endwhile; ?>
                 <?php else: ?>
-                    <tr><td colspan="5" class="text-center text-muted py-4">No hay categorías registradas.</td></tr>
+                    <tr><td colspan="6" class="text-center text-muted py-4">No hay categorías registradas.</td></tr>
                 <?php endif; ?>
             </tbody>
         </table>
@@ -163,9 +166,15 @@ $categorias = $conexion->query("SELECT * FROM categorias_activo ORDER BY nombre_
                 </div>
                 
                 <div class="mb-3">
-                    <label class="form-label fw-bold">Código Contable (PUC)</label>
-                    <input type="number" name="cod_contable" id="cod_contable" class="form-control" placeholder="Ej: 1528">
-                    <div class="form-text">Código numérico para integración contable.</div>
+                    <label class="form-label fw-bold">Cuenta Contable (PUC)</label>
+                    <input type="text" name="cuenta_contable" id="cuenta_contable" class="form-control" placeholder="Ej: 152405">
+                    <div class="form-text">Código/Número de la cuenta para integración contable.</div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Nombre de la Cuenta</label>
+                    <input type="text" name="nombre_cuenta" id="nombre_cuenta" class="form-control" placeholder="Ej: Equipo de computación y comunicación">
+                    <div class="form-text">Nombre descriptivo de la cuenta contable.</div>
                 </div>
 
                 <div class="mb-3">
@@ -193,7 +202,8 @@ $categorias = $conexion->query("SELECT * FROM categorias_activo ORDER BY nombre_
         
         // Limpiar campos
         document.getElementById('nombre_categoria').value = "";
-        document.getElementById('cod_contable').value = "";
+        document.getElementById('cuenta_contable').value = "";
+        document.getElementById('nombre_cuenta').value = "";
         document.getElementById('descripcion').value = "";
         
         modal.show();
@@ -206,7 +216,8 @@ $categorias = $conexion->query("SELECT * FROM categorias_activo ORDER BY nombre_
         
         // Llenar campos con los datos recibidos
         document.getElementById('nombre_categoria').value = datos.nombre_categoria;
-        document.getElementById('cod_contable').value = datos.cod_contable;
+        document.getElementById('cuenta_contable').value = datos.cuenta_contable;
+        document.getElementById('nombre_cuenta').value = datos.nombre_cuenta;
         document.getElementById('descripcion').value = datos.descripcion;
         
         modal.show();

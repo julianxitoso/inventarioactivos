@@ -2,26 +2,27 @@
 
 ## Formato del Archivo Excel (Plantilla Maestra)
 
-El archivo debe ser **.xlsx** con **13 columnas (A a M)**. La primera fila debe ser el encabezado y los datos empiezan en la fila 2.
+El archivo debe ser **.xlsx** con **14 columnas (A a N)**. La primera fila debe ser el encabezado y los datos empiezan en la fila 2.
 
 | Columna | Campo | Obligatorio | Descripción | Ejemplo |
 |---------|-------|-------------|-------------|---------|
 | **A** | Nombre Categoría | ✅ Sí | Si no existe, se crea automáticamente | `Muebles y Enseres` |
-| **B** | Código Contable | ❌ No | Código contable de la categoría | `0` |
-| **C** | Nombre Tipo Activo | ✅ Sí | Si no existe, se crea vinculado a su categoría | `Silla Ergonómica` |
-| **D** | Vida Útil (años) | ❌ No | Vida útil sugerida para el tipo de activo | `5` |
-| **E** | Código Inventario | ❌ No* | Código interno de inventario | `SILLA-001` |
-| **F** | Serie / Serial | ✅ Sí* | **Debe ser único en todo el sistema** | `SN-001` |
-| **G** | Marca | ❌ No | Marca del activo | `Herman Miller` |
-| **H** | Modelo | ❌ No | Modelo (se guarda en "Detalles") | `Aeron` |
-| **I** | Cédula del Responsable | ✅ Sí | **Debe existir en la tabla `usuarios`** | `98655270` |
-| **J** | Estado | ❌ No | Por defecto: `Bueno` | `Bueno` |
-| **K** | Valor / Costo | ❌ No | Valor de compra del activo | `2500000` |
-| **L** | Fecha de Compra | ❌ No | Por defecto: fecha de hoy. Acepta formato Excel nativo o texto `YYYY-MM-DD` | `2024-01-15` |
-| **M** | Detalles | ❌ No | Observaciones adicionales | `Importado desde sistema legacy` |
+| **B** | Cuenta Contable | ❌ No | Cuenta contable de la categoría | `152405` |
+| **C** | Nombre Cuenta | ❌ No | Nombre de la cuenta contable | `Muebles y Enseres` |
+| **D** | Nombre Tipo Activo | ✅ Sí | Si no existe, se crea vinculado a su categoría | `Silla Ergonómica` |
+| **E** | Vida Útil (años) | ❌ No | Vida útil sugerida para el tipo de activo | `5` |
+| **F** | Código Inventario | ❌ No* | Código interno de inventario | `SILLA-001` |
+| **G** | Serie / Serial | ✅ Sí* | **Debe ser único en todo el sistema** | `SN-001` |
+| **H** | Marca | ❌ No | Marca del activo | `Herman Miller` |
+| **I** | Modelo | ❌ No | Modelo (se guarda en "Detalles") | `Aeron` |
+| **J** | Cédula del Responsable | ✅ Sí | **Debe existir en la tabla `usuarios`** | `98655270` |
+| **K** | Estado | ❌ No | Por defecto: `Bueno` | `Bueno` |
+| **L** | Valor / Costo | ❌ No | Valor de compra del activo | `2500000` |
+| **M** | Fecha de Compra | ❌ No | Por defecto: fecha de hoy. Acepta formato Excel nativo o texto `YYYY-MM-DD` | `2024-01-15` |
+| **N** | Detalles | ❌ No | Observaciones adicionales | `Importado desde sistema legacy` |
 
-> **\*** Si no hay Serie (F) ni Código de Inventario (E), la fila se omite.
-> Si falta la Serie (F) pero hay Código de Inventario (E), la serie se genera automáticamente como `SN-[codigo_inventario]`.
+> **\*** Si no hay Serie (G) ni Código de Inventario (F), la fila se omite.
+> Si falta la Serie (G) pero hay Código de Inventario (F), la serie se genera automáticamente como `SN-[codigo_inventario]`.
 
 ---
 
@@ -29,21 +30,21 @@ El archivo debe ser **.xlsx** con **13 columnas (A a M)**. La primera fila debe 
 
 ### Categorías y Tipos
 - Si la **Categoría** (col A) no existe en la tabla `categorias_activo`, se crea automáticamente
-- Si el **Tipo de Activo** (col C) no existe en la tabla `tipos_activo`, se crea vinculado a la categoría
-- La vida útil del tipo (col D) solo se usa al crear el tipo nuevo; si el tipo ya existe, se ignora
+- Si el **Tipo de Activo** (col D) no existe en la tabla `tipos_activo`, se crea vinculado a la categoría
+- La vida útil del tipo (col E) solo se usa al crear el tipo nuevo; si el tipo ya existe, se ignora
 
 ### Validación de duplicados
-- La **Serie** (col F) debe ser única en toda la tabla `activos_tecnologicos`
-- El **Código de Inventario** (col E) también debe ser único
+- La **Serie** (col G) debe ser única en toda la tabla `activos_tecnologicos`
+- El **Código de Inventario** (col F) también debe ser único
 - Si hay duplicados dentro del mismo archivo o contra la base de datos, la fila se omite
 
 ### Responsable (Cédula)
-- La cédula (col I) **DEBE existir** en la tabla `usuarios`
+- La cédula (col J) **DEBE existir** en la tabla `usuarios`
 - Si no existe, la fila se omite con error
 - El **centro de costo** del activo se asigna automáticamente desde el perfil del usuario
 
 ### Fechas
-- Si la fecha (col L) viene en formato numérico de Excel (serial date), se convierte automáticamente
+- Si la fecha (col M) viene en formato numérico de Excel (serial date), se convierte automáticamente
 - Si viene como texto, se espera formato `YYYY-MM-DD`
 - Si viene vacía, se usa la fecha actual
 
@@ -54,15 +55,15 @@ El archivo debe ser **.xlsx** con **13 columnas (A a M)**. La primera fila debe 
 | Qué necesitas obtener | Columna Excel | Notas importantes |
 |----------------------|---------------|-------------------|
 | **Categoría del activo** | A | Mapea las categorías de tu otro sistema. Si son diferentes, el importador las creará automáticamente |
-| **Tipo de activo** | C | Mapeo 1:1 con el tipo de activo que uses actualmente |
-| **Serie / Serial** | F | **Campo más crítico**. Si tu sistema no maneja seriales, puedes concatenar: `TIPO-CODIGO` (ej: `SILLA-001`) |
-| **Marca** | G | Migración directa |
-| **Modelo** | H | Se guardará en el campo "Detalles" del activo |
-| **Cédula del responsable** | I | **Debe existir en `usuarios`**. Si hay responsables nuevos, créalos primero |
-| **Estado del activo** | J | Valores esperados: `Bueno`, `Regular`, `Malo` |
-| **Valor de compra** | K | Número, sin formato moneda (ej: `2500000` no `$2.500.000`) |
-| **Fecha de compra** | L | En lo posible, formato `YYYY-MM-DD` |
-| **Código de inventario** | E | Si tu sistema ya tiene códigos de inventario, úsalos aquí |
+| **Tipo de activo** | D | Mapeo 1:1 con el tipo de activo que uses actualmente |
+| **Serie / Serial** | G | **Campo más crítico**. Si tu sistema no maneja seriales, puedes concatenar: `TIPO-CODIGO` (ej: `SILLA-001`) |
+| **Marca** | H | Migración directa |
+| **Modelo** | I | Se guardará en el campo "Detalles" del activo |
+| **Cédula del responsable** | J | **Debe existir en `usuarios`**. Si hay responsables nuevos, créalos primero |
+| **Estado del activo** | K | Valores esperados: `Bueno`, `Regular`, `Malo` |
+| **Valor de compra** | L | Número, sin formato moneda (ej: `2500000` no `$2.500.000`) |
+| **Fecha de compra** | M | En lo posible, formato `YYYY-MM-DD` |
+| **Código de inventario** | F | Si tu sistema ya tiene códigos de inventario, úsalos aquí |
 
 ---
 

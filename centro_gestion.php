@@ -51,7 +51,7 @@ $rol_usuario_actual_sesion = $_SESSION['rol_usuario'] ?? 'admin';
                 <div class="card h-100">
                     <div class="card-body d-flex flex-column justify-content-center align-items-center p-4"> 
                         <i class="bi bi-diagram-3-fill" style="color: #6f42c1;"></i> <h5 class="card-title mt-2">Gestionar Categorías</h5>
-                        <p class="card-text small text-muted">Crear, editar y organizar categorías y códigos contables.</p>
+                        <p class="card-text small text-muted">Crear, editar y organizar categorías y sus cuentas contables.</p>
                     </div>
                 </div>
             </a>
