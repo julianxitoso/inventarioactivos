@@ -2,7 +2,7 @@
 ob_start();
 // =================================================================================
 // ARCHIVO: procesar_importacion_completo.php
-// VERSIÓN: DEFINITIVA (Manejo de S/N, auto-asignación y limpieza profunda de moneda)
+// VERSIÓN: DEFINITIVA (Bug 1970 solucionado en las fechas + Limpieza extrema)
 // =================================================================================
 
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -58,12 +58,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $stmt_buscar_usuario = $conexion->prepare("SELECT id, id_centro_costo FROM usuarios WHERE usuario = ? LIMIT 1");
                 
-                // DICCIONARIO DE VALORES VACÍOS
                 $valores_nulos_comunes = ['', '.', 'S/N', 'S/N.', 'SN', 'N/A', 'NA', 'SIN SERIE', 'NO TIENE', 'NAN'];
                 
                 for ($row = 2; $row <= $highestRow; $row++) {
                     
-                    // 1. LECTURA Y LIMPIEZA DE TEXTOS BÁSICOS
                     $raw_cat = trim((string)$sheet->getCell('A' . $row)->getValue());
                     $categoria = in_array(strtoupper($raw_cat), $valores_nulos_comunes) ? '' : mb_strtoupper($raw_cat, 'UTF-8');
                     
@@ -89,24 +87,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $raw_estado = trim((string)$sheet->getCell('I' . $row)->getValue());
                     $estado = in_array(strtoupper($raw_estado), $valores_nulos_comunes) ? '' : mb_strtoupper($raw_estado, 'UTF-8');
 
-                    // ========================================================
-                    // LIMPIEZA EXTREMA PARA MILLONES DE PESOS (Columna J)
-                    // ========================================================
                     $raw_val = (string)$sheet->getCell('J' . $row)->getCalculatedValue();
-                    // Si el usuario escribió 3.600.000, quitamos los puntos de miles
                     if (substr_count($raw_val, '.') > 1) { $raw_val = str_replace('.', '', $raw_val); }
-                    // Quitamos $ y letras, dejando solo dígitos y un punto decimal
                     $raw_val = preg_replace('/[^\d.]/', '', $raw_val);
                     $valor_compra = empty($raw_val) ? 0 : floatval($raw_val);
                     
-                    // FECHAS
+                    // ========================================================
+                    // FECHAS (Corrección del BUG de 1970)
+                    // ========================================================
                     $cellDate = $sheet->getCell('K' . $row);
                     $fecha_compra = null;
+                    $valDateRaw = $cellDate->getValue();
+                    
                     if (\PhpOffice\PhpSpreadsheet\Shared\Date::isDateTime($cellDate)) {
-                        $fecha_compra = date('Y-m-d', \PhpOffice\PhpSpreadsheet\Shared\Date::excelToTimestamp($cellDate->getValue()));
+                        $fecha_compra = date('Y-m-d', \PhpOffice\PhpSpreadsheet\Shared\Date::excelToTimestamp($valDateRaw));
+                    } elseif (is_numeric($valDateRaw)) {
+                        // Si Excel manda el número de serie de fecha (ej. 45123) pero sin formato visual
+                        $fecha_compra = date('Y-m-d', \PhpOffice\PhpSpreadsheet\Shared\Date::excelToTimestamp($valDateRaw));
                     } else {
-                        $val_date = trim((string)$cellDate->getValue());
-                        if(!empty($val_date)) $fecha_compra = date('Y-m-d', strtotime(str_replace('/', '-', $val_date)));
+                        $val_date_str = trim((string)$valDateRaw);
+                        if (!empty($val_date_str)) {
+                            // En caso de que venga como texto "27/08/2026"
+                            $timestamp = strtotime(str_replace('/', '-', $val_date_str));
+                            if ($timestamp !== false) {
+                                $fecha_compra = date('Y-m-d', $timestamp);
+                            }
+                        }
+                    }
+                    
+                    // Escudo final: Si por algún motivo se genera la fecha 1970, la anulamos.
+                    if ($fecha_compra === '1970-01-01') {
+                        $fecha_compra = null;
                     }
 
                     $raw_detalles = trim((string)$sheet->getCell('L' . $row)->getValue());
@@ -120,12 +131,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $codigo_depreciacion = trim((string)$sheet->getCell('P' . $row)->getValue());
                     $nombre_depreciacion = mb_strtoupper(trim((string)$sheet->getCell('Q' . $row)->getValue()), 'UTF-8');
 
-                    // Validar que la fila no esté vacía por error
                     if (empty($categoria) && empty($nombre_tipo) && empty($cedula_responsable)) { continue; }
 
-                    // ========================================================
-                    // 2. AUTO-ASIGNAR CENTRO DE COSTO SEGÚN CÉDULA
-                    // ========================================================
                     $id_usuario_responsable = null;
                     $id_centro_costo = null;
 
@@ -141,19 +148,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         continue; 
                     }
 
-                    // ========================================================
-                    // 3. GESTIÓN DE CATEGORÍAS (CONTABILIDAD)
-                    // ========================================================
                     $id_categoria = null;
                     $res_cat = $conexion->query("SELECT id_categoria FROM categorias_activo WHERE nombre_categoria = '" . $conexion->real_escape_string($categoria) . "' LIMIT 1");
                     
                     if ($res_cat && $res_cat->num_rows > 0) {
                         $id_categoria = $res_cat->fetch_object()->id_categoria;
-                        $sql_upd_cat = "UPDATE categorias_activo SET cuenta_contable = ?, nombre_cuenta = ?, cuenta_depreciacion = ?, nombre_cuenta_depreciacion = ? WHERE id_categoria = ?";
-                        $stmt_upd_cat = $conexion->prepare($sql_upd_cat);
-                        $stmt_upd_cat->bind_param("ssssi", $codigo_cuenta, $nombre_cuenta, $codigo_depreciacion, $nombre_depreciacion, $id_categoria);
-                        $stmt_upd_cat->execute();
-                        $stmt_upd_cat->close();
                     } else {
                         $sql_ins_cat = "INSERT INTO categorias_activo (nombre_categoria, cuenta_contable, nombre_cuenta, cuenta_depreciacion, nombre_cuenta_depreciacion) VALUES (?, ?, ?, ?, ?)";
                         $stmt_ins_cat = $conexion->prepare($sql_ins_cat);
@@ -163,9 +162,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $stmt_ins_cat->close();
                     }
 
-                    // ========================================================
-                    // 4. GESTIÓN DE TIPOS DE ACTIVO
-                    // ========================================================
                     $id_tipo_activo = null;
                     $res_tipo = $conexion->query("SELECT id_tipo_activo FROM tipos_activo WHERE nombre_tipo_activo = '" . $conexion->real_escape_string($nombre_tipo) . "' LIMIT 1");
                     
@@ -180,9 +176,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $stmt_ins->close();
                     }
 
-                    // ========================================================
-                    // 5. PRE-VALIDACIONES CONTRA DUPLICADOS EXACTOS
-                    // ========================================================
                     if ($codigo_inventario !== null) {
                         $res_inv = $conexion->query("SELECT id FROM activos_tecnologicos WHERE Codigo_Inv = '" . $conexion->real_escape_string($codigo_inventario) . "' LIMIT 1");
                         if ($res_inv && $res_inv->num_rows > 0) {
@@ -199,9 +192,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
                     }
 
-                    // ========================================================
-                    // 6. INSERCIÓN DEL ACTIVO FINAL
-                    // ========================================================
                     $sql_insert = "INSERT INTO activos_tecnologicos 
                     (id_tipo_activo, marca, modelo, serie, estado, Codigo_Inv, tenencia, id_usuario_responsable, id_centro_costo, fecha_compra, valor_aproximado, vida_util, detalles) 
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
