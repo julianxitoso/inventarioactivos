@@ -1,7 +1,7 @@
 <?php
 // =================================================================================
 // ARCHIVO: dashboard.php
-// ESTADO: FINAL (KPI 'Valor Neto' calculado con fecha de corte fija y año comercial 360 días)
+// ESTADO: FINAL (KPIs 'Valor Neto' y 'Total Depreciado' con fecha de corte fija y año comercial 360 días)
 // =================================================================================
 
 // 1. CONFIGURACIÓN
@@ -91,17 +91,18 @@ $kpi_valor = $r['V'] ?? 0;
 $r = consulta($conexion, "SELECT COUNT(DISTINCT a.id_usuario_responsable) as U $joins $sql_where", $params)->fetch_assoc();
 $kpi_users = $r['U'] ?? 0;
 
-// B. KPI FINANCIERO AVANZADO: VALOR NETO EN LIBROS
-// Cálculo: Costo - ((Costo - Residual) / Vida Útil en meses) * Meses transcurridos
-// Aplica para TODOS los activos, sin importar su valor de compra (sin tope mínimo SMMLV).
-// Usa una FECHA DE CORTE FIJA (no la fecha de hoy) y año comercial de 360 días
+// B. KPI FINANCIERO: FECHA DE CORTE FIJA Y AÑO COMERCIAL DE 360 DÍAS
+// Se usa una FECHA DE CORTE FIJA (no la fecha de hoy) y año comercial de 360 días
 // (mes = 30 días), para que coincida con el método de cálculo del área financiera.
+// Los activos comprados después de la fecha de corte (ej. año 2026) quedan
+// automáticamente en depreciación = 0, porque los días transcurridos hasta el
+// corte dan negativo y se fuerzan a 0 con GREATEST(0, ...).
 // IMPORTANTE: actualizar esta fecha manualmente en cada cierre contable.
 $fecha_corte_contable = '2025-12-31';
 
 $params_dep = $params; 
 
-// Esta consulta matemática calcula la depreciación exacta con la fecha de corte fija
+// B.1 VALOR NETO EN LIBROS (lo que le queda por depreciar a cada activo)
 $sql_dep = "
 SELECT SUM(
     CASE 
@@ -124,6 +125,32 @@ $sql_where
 
 $r_dep = consulta($conexion, $sql_dep, $params_dep)->fetch_assoc();
 $kpi_depreciables = $r_dep['ValorNeto'] ?? 0;
+
+// B.2 TOTAL DEPRECIADO (lo que ya se le depreció a cada activo, hasta la fecha de corte)
+// Es el complemento de B.1: Costo - Valor Neto = Depreciación Acumulada.
+// Los activos sin vida útil/fecha no aportan nada aquí (no se han depreciado, valor = 0).
+$sql_dep_acumulada = "
+SELECT SUM(
+    CASE 
+        -- Sin vida útil o fecha: no se deprecia, su acumulada es 0
+        WHEN a.vida_util IS NULL OR a.vida_util = 0 OR a.fecha_compra IS NULL THEN 0
+        
+        -- Ya pasó su vida útil: toda la base depreciable (Costo - Residual) ya se acumuló
+        WHEN (GREATEST(0, DATEDIFF('$fecha_corte_contable', a.fecha_compra)) / 30) >= (a.vida_util * 12) THEN (a.valor_aproximado - COALESCE(a.valor_residual, 0))
+        
+        -- Cálculo Normal: Depreciación Acumulada (año comercial 360 días / mes de 30 días)
+        -- Si la fecha de compra es posterior al corte (ej. 2026), el DATEDIFF da negativo,
+        -- GREATEST(0,...) lo deja en 0, y por lo tanto la acumulada también queda en 0.
+        ELSE 
+            ((a.valor_aproximado - COALESCE(a.valor_residual, 0)) / (a.vida_util * 12)) * (GREATEST(0, DATEDIFF('$fecha_corte_contable', a.fecha_compra)) / 30)
+    END
+) as TotalDepreciado
+$joins 
+$sql_where 
+";
+
+$r_dep_acum = consulta($conexion, $sql_dep_acumulada, $params_dep)->fetch_assoc();
+$kpi_total_depreciado = $r_dep_acum['TotalDepreciado'] ?? 0;
 
 // C. Estados
 $est_lbl = []; $est_dat = [];
@@ -167,7 +194,8 @@ $payload = [
         'total' => number_format($kpi_total), 
         'valor' => '$'.number_format($kpi_valor,0,',','.'), 
         'users' => number_format($kpi_users),
-        'depreciables' => '$'.number_format($kpi_depreciables,0,',','.') // Este ahora es dinámico
+        'depreciables' => '$'.number_format($kpi_depreciables,0,',','.'), // Valor Neto (lo que falta por depreciar)
+        'depreciado' => '$'.number_format($kpi_total_depreciado,0,',','.') // Total Depreciado (lo que ya se depreció)
     ],
     'charts' => [
         'estado' => ['l' => $est_lbl, 'd' => $est_dat],
@@ -265,7 +293,7 @@ $init_data = json_encode($payload, JSON_UNESCAPED_UNICODE);
         </div>
     </div>
 
-    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-4 g-3 mb-4">
+    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-5 g-3 mb-4">
         <div class="col">
             <div class="kpi-card border-start border-4 border-primary ps-3">
                 <div class="d-flex align-items-center">
@@ -287,6 +315,14 @@ $init_data = json_encode($payload, JSON_UNESCAPED_UNICODE);
                 <div class="d-flex align-items-center">
                     <div class="fs-1 me-3 text-purple bg-info bg-opacity-10 p-2 rounded" style="color: #6f42c1 !important;"><i class="bi bi-graph-down-arrow"></i></div>
                     <div><div class="kpi-value" id="kpiDepreciables">--</div><div class="kpi-label">Valor Neto Actual</div></div>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="kpi-card border-start border-4 border-danger ps-3">
+                <div class="d-flex align-items-center">
+                    <div class="fs-1 me-3 text-danger bg-danger bg-opacity-10 p-2 rounded"><i class="bi bi-graph-down"></i></div>
+                    <div><div class="kpi-value" id="kpiDepreciado">--</div><div class="kpi-label">Total Depreciado</div></div>
                 </div>
             </div>
         </div>
@@ -478,6 +514,7 @@ function updateKPIs(kpi) {
     $('#kpiValor').text(kpi.valor);
     $('#kpiUsers').text(kpi.users);
     $('#kpiDepreciables').text(kpi.depreciables);
+    $('#kpiDepreciado').text(kpi.depreciado);
 }
 
 function resetFiltros() {
