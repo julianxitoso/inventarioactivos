@@ -93,8 +93,7 @@ $kpi_users = $r['U'] ?? 0;
 
 // B. KPI FINANCIERO AVANZADO: VALOR NETO EN LIBROS (Tiempo Real)
 // Cálculo: Costo - ((Costo - Residual) * (% de Vida Usada))
-// Solo para activos > SMMLV 2025.
-$smmlv_2025 = 1423500;
+// Aplica para TODOS los activos, sin importar su valor de compra (sin tope mínimo SMMLV).
 $params_dep = $params; 
 
 // Esta consulta matemática calcula la depreciación exacta en el momento de la carga
@@ -116,7 +115,6 @@ SELECT SUM(
 ) as ValorNeto
 $joins 
 $sql_where 
-AND (a.valor_aproximado + 0) >= $smmlv_2025
 ";
 
 $r_dep = consulta($conexion, $sql_dep, $params_dep)->fetch_assoc();

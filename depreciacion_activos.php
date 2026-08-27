@@ -2,7 +2,7 @@
 // =================================================================================
 // ARCHIVO: depreciacion.php
 // DESCRIPCIÓN: Análisis Contable con Base Fija SMMLV 2025
-// ESTADO: FINAL (Ajustado para usar solo salario 2025)
+// ESTADO: FINAL (Línea recta para TODOS los activos, sin tope mínimo)
 // =================================================================================
 
 // 1. CONFIGURACIÓN Y SEGURIDAD
@@ -54,9 +54,9 @@ $nombre_usuario_actual_sesion = $_SESSION['nombre_usuario_completo'] ?? 'Usuario
 $rol_usuario_actual_sesion = $_SESSION['rol_usuario'] ?? 'Desconocido';
 
 // --- CONFIGURACIÓN DE DEPRECIACIÓN (BASE 2025) ---
-// Se utiliza únicamente el SMMLV de 2025 para todos los cálculos, independiente de la fecha de compra.
-$salario_minimo_base = 1423500; // Valor Oficial 2025
-define('UMBRAL_DEPRECIACION', 1); // Activos < 1 SMMLV (2025) son Gasto Directo
+// Se utiliza únicamente el SMMLV de 2025 como referencia informativa (ya NO se usa como tope mínimo).
+// Todos los activos se deprecian en línea recta sin importar su valor de compra.
+$salario_minimo_base = 1423500; // Valor Oficial 2025 (solo referencia informativa)
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -190,8 +190,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let activosCache = [];
 
     // --- DATOS INYECTADOS DESDE PHP ---
-    const SALARIO_BASE = <?= $salario_minimo_base ?>; // Fijo 2025
-    const UMBRAL_SMMLV = <?= UMBRAL_DEPRECIACION ?>;
+    const SALARIO_BASE = <?= $salario_minimo_base ?>; // Fijo 2025 (solo referencia informativa)
 
     formFiltros.addEventListener('submit', function(e) {
         e.preventDefault();
@@ -279,7 +278,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // === LÓGICA FINANCIERA ACTUALIZADA (BASE FIJA 2025) ===
+    // === LÓGICA FINANCIERA ACTUALIZADA (LÍNEA RECTA PARA TODOS LOS ACTIVOS, SIN TOPE MÍNIMO) ===
     function mostrarDetalles(activo) {
         const valorCompra = parseFloat(activo.valor_aproximado || 0);
         const valorResidual = parseFloat(activo.valor_residual || 0);
@@ -310,23 +309,12 @@ document.addEventListener('DOMContentLoaded', function () {
         let depreciacion = {};
         let mesesTranscurridos = 0;
         
-        // Calcular valor en Salarios Mínimos (Base 2025)
+        // Calcular valor en Salarios Mínimos (Base 2025) - Solo dato informativo, ya NO se usa como tope.
         const valorEnSalarios = salarioAplicable > 0 ? (valorCompra / salarioAplicable) : 0;
         
-        // --- CASO 1: MENOR CUANTÍA (< 1 SMMLV BASE 2025) ---
-        if (valorEnSalarios < UMBRAL_SMMLV) {
-            depreciacion.esDeduccionDirecta = true;
-            depreciacion.mensaje_especial = `Activo de Menor Cuantía (< 1 SMMLV Base 2025). Se deprecia al 100% como gasto directo.`;
-            depreciacion.valorADeducir = valorCompra;
-            depreciacion.valorEnLibros = 0;
-            depreciacion.depAcumulada = valorCompra;
-            depreciacion.depMensual = 0;
-            depreciacion.estado = 'Gasto Directo (Depreciado)';
-        } 
-        // --- CASO 2: ACTIVO FIJO DEPRECIABLE ---
-        else if (fechaCompra && vidaUtilAnios > 0) {
+        // --- CASO 1: ACTIVO FIJO DEPRECIABLE (Línea Recta, sin importar el valor de compra) ---
+        if (fechaCompra && vidaUtilAnios > 0) {
             depreciacion.aplica = true;
-            depreciacion.esDeduccionDirecta = false;
             
             const fechaInicio = new Date(fechaCompra + 'T00:00:00');
             const fechaActual = new Date();
@@ -361,7 +349,7 @@ document.addEventListener('DOMContentLoaded', function () {
             else depreciacion.estado = 'En Curso';
             
         } else {
-            // CASO 3: DATOS FALTANTES
+            // CASO 2: DATOS FALTANTES
             depreciacion.aplica = false;
             depreciacion.mensaje_no_aplica = "Faltan datos clave (Fecha Compra o Vida Útil) para calcular.";
             depreciacion.valorEnLibros = valorCompra;
@@ -395,18 +383,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 <div class="card-header bg-white fw-bold text-success border-bottom-0"><i class="bi bi-calculator"></i> Resultado Contable (${new Date().getFullYear()})</div>
                 <div class="card-body">`;
         
-        if (depreciacion.esDeduccionDirecta) {
-            htmlCalculo += `
-                <div class="alert alert-info border-0 shadow-sm">
-                    <h6 class="alert-heading mb-1"><i class="bi bi-lightning-fill"></i> Gasto Directo</h6>
-                    <small>${depreciacion.mensaje_especial}</small>
-                </div>
-                <div class="text-center my-4">
-                    <h1 class="display-5 fw-bold text-secondary">${f(0)}</h1>
-                    <p class="text-muted small">Valor Neto en Libros</p>
-                </div>
-                <div class="d-grid"><button class="btn btn-light btn-sm disabled">Depreciado 100%</button></div>`;
-        } else if(depreciacion.aplica) {
+        if(depreciacion.aplica) {
             const porcentaje = ((valorCompra - depreciacion.valorEnLibros) / valorCompra) * 100;
             const colorBarra = porcentaje >= 100 ? 'bg-success' : 'bg-primary';
             
