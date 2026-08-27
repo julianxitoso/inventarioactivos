@@ -57,9 +57,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $stmt_buscar_usuario = $conexion->prepare("SELECT id, id_centro_costo FROM usuarios WHERE usuario = ? LIMIT 1");
                 
+                // DICCIONARIO DE PALABRAS QUE SIGNIFICAN "VACÍO"
+                $valores_nulos_comunes = ['', '.', 'S/N', 'S/N.', 'SN', 'N/A', 'NA', 'SIN SERIE', 'NO TIENE'];
+                
                 for ($row = 2; $row <= $highestRow; $row++) {
                     
-                    // Limpieza general
                     $raw_cat = trim((string)$sheet->getCell('A' . $row)->getValue());
                     $categoria = ($raw_cat === '.' || $raw_cat === '') ? '' : mb_strtoupper($raw_cat, 'UTF-8');
                     
@@ -68,12 +70,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     
                     $vida_util = intval($sheet->getCell('C' . $row)->getValue() ?? 0);
                     
-                    // AHORA ENVIAMOS NULL REAL SI ESTÁ VACÍO
+                    // LIMPIEZA INTELIGENTE PARA CÓDIGO INVENTARIO
                     $raw_inv = trim((string)$sheet->getCell('D' . $row)->getValue());
-                    $codigo_inventario = ($raw_inv === '.' || $raw_inv === '') ? null : mb_strtoupper($raw_inv, 'UTF-8');
+                    $codigo_inventario = mb_strtoupper($raw_inv, 'UTF-8');
+                    if (in_array($codigo_inventario, $valores_nulos_comunes)) {
+                        $codigo_inventario = null;
+                    }
 
+                    // LIMPIEZA INTELIGENTE PARA SERIE
                     $raw_serie = trim((string)$sheet->getCell('E' . $row)->getValue());
-                    $serie = ($raw_serie === '.' || $raw_serie === '') ? null : mb_strtoupper($raw_serie, 'UTF-8');
+                    $serie = mb_strtoupper($raw_serie, 'UTF-8');
+                    if (in_array($serie, $valores_nulos_comunes)) {
+                        $serie = null;
+                    }
 
                     $raw_marca = trim((string)$sheet->getCell('F' . $row)->getValue());
                     $marca = ($raw_marca === '.' || $raw_marca === '') ? '' : mb_strtoupper($raw_marca, 'UTF-8');
