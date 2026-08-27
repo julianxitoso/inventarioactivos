@@ -2,6 +2,7 @@
 ob_start();
 // =================================================================================
 // ARCHIVO: procesar_importacion_completo.php
+// VERSIÓN: DEFINITIVA (Manejo de S/N, auto-asignación y limpieza profunda de moneda)
 // =================================================================================
 
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -57,46 +58,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $stmt_buscar_usuario = $conexion->prepare("SELECT id, id_centro_costo FROM usuarios WHERE usuario = ? LIMIT 1");
                 
-                // DICCIONARIO DE PALABRAS QUE SIGNIFICAN "VACÍO"
-                $valores_nulos_comunes = ['', '.', 'S/N', 'S/N.', 'SN', 'N/A', 'NA', 'SIN SERIE', 'NO TIENE'];
+                // DICCIONARIO DE VALORES VACÍOS
+                $valores_nulos_comunes = ['', '.', 'S/N', 'S/N.', 'SN', 'N/A', 'NA', 'SIN SERIE', 'NO TIENE', 'NAN'];
                 
                 for ($row = 2; $row <= $highestRow; $row++) {
                     
+                    // 1. LECTURA Y LIMPIEZA DE TEXTOS BÁSICOS
                     $raw_cat = trim((string)$sheet->getCell('A' . $row)->getValue());
-                    $categoria = ($raw_cat === '.' || $raw_cat === '') ? '' : mb_strtoupper($raw_cat, 'UTF-8');
+                    $categoria = in_array(strtoupper($raw_cat), $valores_nulos_comunes) ? '' : mb_strtoupper($raw_cat, 'UTF-8');
                     
                     $raw_tipo = trim((string)$sheet->getCell('B' . $row)->getValue());
-                    $nombre_tipo = ($raw_tipo === '.' || $raw_tipo === '') ? '' : mb_strtoupper($raw_tipo, 'UTF-8');
+                    $nombre_tipo = in_array(strtoupper($raw_tipo), $valores_nulos_comunes) ? '' : mb_strtoupper($raw_tipo, 'UTF-8');
                     
                     $vida_util = intval($sheet->getCell('C' . $row)->getValue() ?? 0);
                     
-                    // LIMPIEZA INTELIGENTE PARA CÓDIGO INVENTARIO
                     $raw_inv = trim((string)$sheet->getCell('D' . $row)->getValue());
-                    $codigo_inventario = mb_strtoupper($raw_inv, 'UTF-8');
-                    if (in_array($codigo_inventario, $valores_nulos_comunes)) {
-                        $codigo_inventario = null;
-                    }
+                    $codigo_inventario = in_array(strtoupper($raw_inv), $valores_nulos_comunes) ? null : mb_strtoupper($raw_inv, 'UTF-8');
 
-                    // LIMPIEZA INTELIGENTE PARA SERIE
                     $raw_serie = trim((string)$sheet->getCell('E' . $row)->getValue());
-                    $serie = mb_strtoupper($raw_serie, 'UTF-8');
-                    if (in_array($serie, $valores_nulos_comunes)) {
-                        $serie = null;
-                    }
+                    $serie = in_array(strtoupper($raw_serie), $valores_nulos_comunes) ? null : mb_strtoupper($raw_serie, 'UTF-8');
 
                     $raw_marca = trim((string)$sheet->getCell('F' . $row)->getValue());
-                    $marca = ($raw_marca === '.' || $raw_marca === '') ? '' : mb_strtoupper($raw_marca, 'UTF-8');
+                    $marca = in_array(strtoupper($raw_marca), $valores_nulos_comunes) ? '' : mb_strtoupper($raw_marca, 'UTF-8');
 
                     $raw_modelo = trim((string)$sheet->getCell('G' . $row)->getValue());
-                    $modelo = ($raw_modelo === '.' || $raw_modelo === '') ? '' : mb_strtoupper($raw_modelo, 'UTF-8');
+                    $modelo = in_array(strtoupper($raw_modelo), $valores_nulos_comunes) ? '' : mb_strtoupper($raw_modelo, 'UTF-8');
 
                     $cedula_responsable = trim((string)$sheet->getCell('H' . $row)->getValue());
                     
                     $raw_estado = trim((string)$sheet->getCell('I' . $row)->getValue());
-                    $estado = ($raw_estado === '.' || $raw_estado === '') ? '' : mb_strtoupper($raw_estado, 'UTF-8');
+                    $estado = in_array(strtoupper($raw_estado), $valores_nulos_comunes) ? '' : mb_strtoupper($raw_estado, 'UTF-8');
 
-                    $valor_compra = floatval($sheet->getCell('J' . $row)->getValue() ?? 0);
+                    // ========================================================
+                    // LIMPIEZA EXTREMA PARA MILLONES DE PESOS (Columna J)
+                    // ========================================================
+                    $raw_val = (string)$sheet->getCell('J' . $row)->getCalculatedValue();
+                    // Si el usuario escribió 3.600.000, quitamos los puntos de miles
+                    if (substr_count($raw_val, '.') > 1) { $raw_val = str_replace('.', '', $raw_val); }
+                    // Quitamos $ y letras, dejando solo dígitos y un punto decimal
+                    $raw_val = preg_replace('/[^\d.]/', '', $raw_val);
+                    $valor_compra = empty($raw_val) ? 0 : floatval($raw_val);
                     
+                    // FECHAS
                     $cellDate = $sheet->getCell('K' . $row);
                     $fecha_compra = null;
                     if (\PhpOffice\PhpSpreadsheet\Shared\Date::isDateTime($cellDate)) {
@@ -107,7 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
 
                     $raw_detalles = trim((string)$sheet->getCell('L' . $row)->getValue());
-                    $detalles = ($raw_detalles === '.' || $raw_detalles === '') ? '' : mb_strtoupper($raw_detalles, 'UTF-8');
+                    $detalles = in_array(strtoupper($raw_detalles), $valores_nulos_comunes) ? '' : mb_strtoupper($raw_detalles, 'UTF-8');
 
                     $raw_tenencia = trim((string)$sheet->getCell('M' . $row)->getValue());
                     $tenencia = empty($raw_tenencia) ? 'PROPIO' : mb_strtoupper($raw_tenencia, 'UTF-8');
@@ -117,11 +120,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $codigo_depreciacion = trim((string)$sheet->getCell('P' . $row)->getValue());
                     $nombre_depreciacion = mb_strtoupper(trim((string)$sheet->getCell('Q' . $row)->getValue()), 'UTF-8');
 
-                    // Validar que la fila no esté vacía
+                    // Validar que la fila no esté vacía por error
                     if (empty($categoria) && empty($nombre_tipo) && empty($cedula_responsable)) { continue; }
 
                     // ========================================================
-                    // 1. AUTO-ASIGNAR CENTRO DE COSTO
+                    // 2. AUTO-ASIGNAR CENTRO DE COSTO SEGÚN CÉDULA
                     // ========================================================
                     $id_usuario_responsable = null;
                     $id_centro_costo = null;
@@ -139,7 +142,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
 
                     // ========================================================
-                    // 2. GESTIÓN DE CATEGORÍAS
+                    // 3. GESTIÓN DE CATEGORÍAS (CONTABILIDAD)
                     // ========================================================
                     $id_categoria = null;
                     $res_cat = $conexion->query("SELECT id_categoria FROM categorias_activo WHERE nombre_categoria = '" . $conexion->real_escape_string($categoria) . "' LIMIT 1");
@@ -161,7 +164,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
 
                     // ========================================================
-                    // 3. GESTIÓN DE TIPOS DE ACTIVO
+                    // 4. GESTIÓN DE TIPOS DE ACTIVO
                     // ========================================================
                     $id_tipo_activo = null;
                     $res_tipo = $conexion->query("SELECT id_tipo_activo FROM tipos_activo WHERE nombre_tipo_activo = '" . $conexion->real_escape_string($nombre_tipo) . "' LIMIT 1");
@@ -178,7 +181,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
 
                     // ========================================================
-                    // 4. PRE-VALIDACIONES
+                    // 5. PRE-VALIDACIONES CONTRA DUPLICADOS EXACTOS
                     // ========================================================
                     if ($codigo_inventario !== null) {
                         $res_inv = $conexion->query("SELECT id FROM activos_tecnologicos WHERE Codigo_Inv = '" . $conexion->real_escape_string($codigo_inventario) . "' LIMIT 1");
@@ -197,7 +200,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
 
                     // ========================================================
-                    // 5. INSERCIÓN DEL ACTIVO FINAL
+                    // 6. INSERCIÓN DEL ACTIVO FINAL
                     // ========================================================
                     $sql_insert = "INSERT INTO activos_tecnologicos 
                     (id_tipo_activo, marca, modelo, serie, estado, Codigo_Inv, tenencia, id_usuario_responsable, id_centro_costo, fecha_compra, valor_aproximado, vida_util, detalles) 
@@ -221,7 +224,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 if ($importados > 0) {
                     $conexion->commit();
-                    $_SESSION['import_success_message'] = "¡Éxito! Se importaron $importados activos con su Contabilidad y Tenencia.";
+                    $_SESSION['import_success_message'] = "¡Éxito total! Se importaron $importados activos correctamente.";
                 } else {
                     $conexion->rollback();
                     $_SESSION['import_error_message'] = "No se importó ningún activo. Revise los errores.";
