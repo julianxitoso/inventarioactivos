@@ -1,7 +1,7 @@
 <?php
 // =================================================================================
 // ARCHIVO: dashboard.php
-// ESTADO: FÓRMULA FINANCIERA EXACTA (Sin topes SMMLV, sin valor residual, Días/360)
+// ESTADO: FÓRMULA FINANCIERA EXACTA (Sin topes mínimos, Días/360, Filtro Año 0)
 // =================================================================================
 
 ini_set('display_errors', 0); 
@@ -20,7 +20,6 @@ $conexion->set_charset("utf8mb4");
 
 $nombre_usuario_actual_sesion = $_SESSION['nombre_usuario_completo'] ?? 'Usuario';
 
-// 2. HELPER CONSULTAS
 function consulta($con, $sql, $params = []) {
     $stmt = $con->prepare($sql);
     if(!$stmt) return false;
@@ -34,7 +33,6 @@ function consulta($con, $sql, $params = []) {
 
 function limpiar($s) { return $s ? mb_convert_encoding($s, 'UTF-8', 'UTF-8') : 'Sin Asignar'; }
 
-// 3. CARGAR LISTAS PARA FILTROS
 $listas = [];
 if (!isset($_GET['ajax'])) {
     $r = $conexion->query("SELECT DISTINCT empresa FROM usuarios WHERE empresa != '' ORDER BY empresa");
@@ -54,7 +52,6 @@ if (!isset($_GET['ajax'])) {
     $listas['centros'] = $r->fetch_all(MYSQLI_ASSOC);
 }
 
-// 4. FILTROS
 $where = ["a.estado != 'Dado de Baja'"];
 $params = [];
 $ajax = isset($_GET['ajax']);
@@ -72,7 +69,6 @@ if ($v = $_GET['filtro_cedula'] ?? null) {
 
 $sql_where = " WHERE " . implode(" AND ", $where);
 
-// JOINS
 $joins = " FROM activos_tecnologicos a 
             LEFT JOIN usuarios u ON a.id_usuario_responsable = u.id 
             LEFT JOIN tipos_activo ta ON a.id_tipo_activo = ta.id_tipo_activo
@@ -80,7 +76,7 @@ $joins = " FROM activos_tecnologicos a
             LEFT JOIN centros_costo cc ON a.id_centro_costo = cc.id_centro_costo
             LEFT JOIN regionales r ON cc.id_regional = r.id_regional ";
 
-// 5. DATOS BÁSICOS
+// DATOS BÁSICOS
 $r = consulta($conexion, "SELECT COUNT(a.id) as T, SUM(a.valor_aproximado) as V $joins $sql_where", $params)->fetch_assoc();
 $kpi_total = $r['T'] ?? 0;
 $kpi_valor = $r['V'] ?? 0;
@@ -94,14 +90,14 @@ $kpi_users = $r['U'] ?? 0;
 $fecha_corte_contable = '2025-12-31';
 $params_dep = $params; 
 
-// AÑOS DEPRECIADOS: (Fecha Corte - Fecha Compra) / 360 (GREATEST(0) Evita negativos para compras 2026)
-// VALOR DEPRECIADO: (Valor / Vida Util) * Años Depreciados (LEAST() asegura no pasar del 100%)
-
-// B.1 TOTAL DEPRECIADO (Lo que ya se consumió)
+// TOTAL DEPRECIADO: (Valor de compra / vida util años) * Años depreciados
+// AÑOS DEPRECIADOS: (Fecha corte - Fecha compra) / 360
+// *Nota: Se ignoran las fechas nulas o '0000-00-00' para que no den 2000 años de depreciación.
 $sql_dep_acumulada = "
 SELECT SUM(
     CASE 
-        WHEN a.vida_util IS NULL OR a.vida_util = 0 OR a.fecha_compra IS NULL THEN 0
+        WHEN a.vida_util IS NULL OR a.vida_util <= 0 THEN 0
+        WHEN a.fecha_compra IS NULL OR a.fecha_compra <= '1990-01-01' THEN 0
         ELSE LEAST(
             a.valor_aproximado, 
             (a.valor_aproximado / a.vida_util) * (GREATEST(0, DATEDIFF('$fecha_corte_contable', a.fecha_compra)) / 360)
@@ -114,16 +110,13 @@ $sql_where
 $r_dep_acum = consulta($conexion, $sql_dep_acumulada, $params_dep)->fetch_assoc();
 $kpi_total_depreciado = $r_dep_acum['TotalDepreciado'] ?? 0;
 
-// B.2 VALOR NETO EN LIBROS (Lo que falta por consumir: Costo Total - Total Depreciado)
+// VALOR NETO EN LIBROS: Lo que costaron menos lo que se depreció
 $kpi_depreciables = $kpi_valor - $kpi_total_depreciado;
 
-
-// C. Estados
 $est_lbl = []; $est_dat = [];
 $res = consulta($conexion, "SELECT COALESCE(NULLIF(a.estado, ''), 'Sin Estado') as N, COUNT(a.id) as C $joins $sql_where GROUP BY estado ORDER BY C DESC", $params);
 while($row = $res->fetch_assoc()) { $est_lbl[] = limpiar($row['N']); $est_dat[] = $row['C']; }
 
-// D. Gráficos
 $d_cat_cant = []; $l_cat_cant = [];
 $res = consulta($conexion, "SELECT cat.nombre_categoria as N, COUNT(a.id) as C $joins $sql_where GROUP BY cat.id_categoria ORDER BY C DESC LIMIT 8", $params);
 while($row = $res->fetch_assoc()) { $l_cat_cant[] = limpiar($row['N']); $d_cat_cant[] = $row['C']; }
@@ -133,7 +126,7 @@ $res = consulta($conexion, "SELECT cat.nombre_categoria as N, SUM(a.valor_aproxi
 while($row = $res->fetch_assoc()) { $l_cat_val[] = limpiar($row['N']); $d_cat_val[] = $row['C']; }
 
 $d_trend = []; $l_trend = [];
-$sql_trend = "SELECT YEAR(a.fecha_compra) as anio, COUNT(a.id) as C $joins $sql_where AND a.fecha_compra IS NOT NULL AND a.fecha_compra != '0000-00-00' GROUP BY anio HAVING anio > 2015 ORDER BY anio ASC";
+$sql_trend = "SELECT YEAR(a.fecha_compra) as anio, COUNT(a.id) as C $joins $sql_where AND a.fecha_compra IS NOT NULL AND a.fecha_compra > '1990-01-01' GROUP BY anio HAVING anio > 2015 ORDER BY anio ASC";
 $res = consulta($conexion, $sql_trend, $params);
 while($row = $res->fetch_assoc()) { $l_trend[] = $row['anio']; $d_trend[] = $row['C']; }
 
@@ -153,7 +146,6 @@ $d_emp = []; $l_emp = [];
 $res = consulta($conexion, "SELECT u.empresa as N, COUNT(a.id) as C $joins $sql_where AND u.empresa != '' GROUP BY u.empresa ORDER BY C DESC", $params);
 while($row = $res->fetch_assoc()) { $l_emp[] = limpiar($row['N']); $d_emp[] = $row['C']; }
 
-// RETORNO AJAX
 $payload = [
     'kpi' => [
         'total' => number_format($kpi_total), 
@@ -375,9 +367,7 @@ function initCharts() {
     charts.catc = newChart('chartCatCant', 'bar', db.charts.cat_cant.l, db.charts.cat_cant.d, {indexAxis: 'y', targetFilter:'#selCategoria', color: '#4e73df'});
     charts.catv = newChart('chartCatVal', 'pie', db.charts.cat_val.l, db.charts.cat_val.d, {targetFilter:'#selCategoria'});
     
-    // REGIONAL: Barras Horizontales Verde
     charts.reg = newChart('chartReg', 'bar', db.charts.reg.l, db.charts.reg.d, {indexAxis: 'y', targetFilter:'#selRegional', color: '#1cc88a'});
-
     charts.emp = newChart('chartEmp', 'doughnut', db.charts.emp.l, db.charts.emp.d, {targetFilter:'#selEmpresa', cutout: '60%', customColors: true});
     charts.trend = newChart('chartTrend', 'line', db.charts.trend.l, db.charts.trend.d, {fill: true, color: 'rgba(78, 115, 223, 0.1)', borderColor: '#4e73df'});
     charts.cc = newChart('chartCC', 'bar', db.charts.cc.l, db.charts.cc.d, {targetFilter:'#selCentro', color: '#36b9cc'});

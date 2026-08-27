@@ -1,8 +1,7 @@
 <?php
 // =================================================================================
 // ARCHIVO: depreciacion.php
-// DESCRIPCIÓN: Análisis Contable EXACTO según reglas del Dpto. Financiero
-// ESTADO: FINAL (Sin topes, sin valor residual, Días reales / 360)
+// ESTADO: FÓRMULA FINANCIERA EXACTA (Sin topes mínimos, Días/360, Filtro Año 0)
 // =================================================================================
 
 ini_set('display_errors', 1);
@@ -17,7 +16,6 @@ if (!isset($_SESSION['usuario_id'])) {
 
 require_once __DIR__ . '/backend/auth_check.php';
 restringir_acceso_pagina(['admin', 'auditor', 'registrador', 'tecnico']);
-
 require_once __DIR__ . '/backend/db.php';
 
 if (isset($conn) && !isset($conexion)) { $conexion = $conn; }
@@ -31,7 +29,6 @@ if (!isset($conexion) || (method_exists($conexion, 'connect_error') && $conexion
     $error_conexion_db = "Error crítico de conexión a la base de datos.";
 } else {
     $conexion->set_charset("utf8mb4");
-    
     $result_tipos = $conexion->query("SELECT id_tipo_activo, nombre_tipo_activo FROM tipos_activo ORDER BY nombre_tipo_activo");
     if ($result_tipos) { $opciones_tipos = $result_tipos->fetch_all(MYSQLI_ASSOC); }
 
@@ -42,7 +39,6 @@ if (!isset($conexion) || (method_exists($conexion, 'connect_error') && $conexion
 $nombre_usuario_actual_sesion = $_SESSION['nombre_usuario_completo'] ?? 'Usuario';
 $rol_usuario_actual_sesion = $_SESSION['rol_usuario'] ?? 'Desconocido';
 
-// FECHA DE CORTE FIJA (Igual a Financiera)
 $fecha_corte_contable = '2025-12-31';
 ?>
 <!DOCTYPE html>
@@ -252,17 +248,16 @@ document.addEventListener('DOMContentLoaded', function () {
     function mostrarDetalles(activo) {
         const valorCompra = parseFloat(activo.valor_aproximado || 0);
         const fechaCompra = activo.fecha_compra;
-        const vidaUtilAnios = parseFloat(activo.vida_util || 0); // OJO: Dato extraído 100% de la Base de Datos
+        const vidaUtilAnios = parseFloat(activo.vida_util || 0);
         
         let depreciacion = {};
         let diasTranscurridos = 0;
         let aniosDepreciados = 0;
         
-        // Aplica únicamente si el activo tiene Fecha y Vida Útil asignada en BD
-        if (fechaCompra && vidaUtilAnios > 0) {
+        // Aplica si tiene fecha, es mayor a 1990 y tiene vida útil
+        if (fechaCompra && fechaCompra > '1990-01-01' && vidaUtilAnios > 0) {
             depreciacion.aplica = true;
             
-            // Cálculos precisos usando zona horaria neutra para evitar saltos de día
             const partsInicio = fechaCompra.split('-');
             const fechaInicio = Date.UTC(partsInicio[0], partsInicio[1] - 1, partsInicio[2]);
             
@@ -271,12 +266,11 @@ document.addEventListener('DOMContentLoaded', function () {
             
             const MS_POR_DIA = 1000 * 60 * 60 * 24;
             
-            // Controla que los de 2026 no generen depreciación negativa
             if (fechaCorte > fechaInicio) {
                 diasTranscurridos = Math.floor((fechaCorte - fechaInicio) / MS_POR_DIA);
             }
 
-            // FÓRMULA DE DEPRECIACIÓN EXACTA DE FINANCIERA
+            // FÓRMULA DE FINANCIERA EXACTA
             aniosDepreciados = diasTranscurridos / 360;
             const depCalculada = (valorCompra / vidaUtilAnios) * aniosDepreciados;
             
@@ -290,11 +284,10 @@ document.addEventListener('DOMContentLoaded', function () {
             
         } else {
             depreciacion.aplica = false;
-            depreciacion.mensaje_no_aplica = "El activo no cuenta con Fecha de Compra o Vida Útil en la Base de Datos.";
+            depreciacion.mensaje_no_aplica = "El activo carece de Fecha de Compra válida o no tiene Vida Útil asignada en Base de Datos.";
             depreciacion.valorEnLibros = valorCompra;
         }
 
-        // RENDER HTML
         const f = (num) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(num || 0);
         const escape = (str) => str ? String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;') : '';
 
