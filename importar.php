@@ -34,13 +34,13 @@ unset($_SESSION['import_success_message'], $_SESSION['import_error_message'], $_
         <div class="card shadow-lg border-0">
             <div class="card-body p-5">
                 <h2 class="text-center text-primary mb-4"><i class="bi bi-cloud-upload-fill"></i> Importador Maestro</h2>
-                <p class="text-center text-muted mb-4">Cargue activos, categorías y tipos en un solo paso.</p>
+                <p class="text-center text-muted mb-4">Cargue activos, categorías y tipos en un solo paso con auto-asignación inteligente.</p>
 
                 <?php if ($mensaje_exito): ?><div class="alert alert-success"><i class="bi bi-check-circle"></i> <?= $mensaje_exito ?></div><?php endif; ?>
                 <?php if ($mensaje_error): ?><div class="alert alert-danger"><i class="bi bi-exclamation-triangle"></i> <?= $mensaje_error ?></div><?php endif; ?>
                 <?php if (!empty($errores_detalle)): ?>
                     <div class="alert alert-warning">
-                        <strong>Filas omitidas:</strong>
+                        <strong>Filas omitidas o con problemas:</strong>
                         <ul class="mb-0 small mt-2" style="max-height: 150px; overflow-y: auto;">
                             <?php foreach ($errores_detalle as $error): ?><li><?= htmlspecialchars($error) ?></li><?php endforeach; ?>
                         </ul>
@@ -54,23 +54,23 @@ unset($_SESSION['import_success_message'], $_SESSION['import_error_message'], $_
                     </div>
                     
                     <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-primary btn-lg">Procesar Archivo Completo</button>
-                        <a href="plantillas/plantilla_maestra.xlsx" class="btn btn-outline-secondary" download>
-                            <i class="bi bi-download"></i> Descargar Plantilla Maestra
-                        </a>
+                        <button type="submit" class="btn btn-primary btn-lg"><i class="bi bi-gear-fill me-2"></i> Procesar Archivo Completo</button>
                     </div>
                 </form>
 
-                <div class="mt-4 p-3 bg-light rounded small">
-                    <h6 class="fw-bold"><i class="bi bi-info-circle"></i> Reglas de Importación:</h6>
-                    <ul class="mb-0 ps-3">
-                        <li>Si la <strong>Categoría</strong> no existe, se creará automáticamente.</li>
-                        <li>Si el <strong>Tipo de Activo</strong> no existe, se creará vinculado a la categoría.</li>
-                        <li>La <strong>Cédula del Responsable</strong> DEBE existir en el sistema previamente.</li>
-                        <li>La <strong>Serie</strong> debe ser única.</li>
+                <div class="mt-4 p-3 bg-light rounded small border">
+                    <h6 class="fw-bold text-primary"><i class="bi bi-info-circle"></i> Nuevas Reglas de Importación:</h6>
+                    <ul class="mb-0 ps-3 text-muted">
+                        <li><strong>Limpieza Automática:</strong> El sistema eliminará espacios en blanco invisibles y convertirá todo a MAYÚSCULAS automáticamente.</li>
+                        <li><strong>Asignación Física:</strong> No necesita ingresar el Centro de Costo ni la Empresa. El sistema buscará la cédula del responsable y heredará su ubicación actual automáticamente.</li>
+                        <li>La <strong>Cédula del Responsable</strong> DEBE existir en el sistema previamente o la fila se omitirá.</li>
+                        <li>Si el sistema detecta puntos (.) en columnas como la Serie, los cambiará por campos vacíos automáticamente.</li>
                     </ul>
                 </div>
             </div>
+        </div>
+        <div class="text-center mt-3 mb-5">
+            <a href="menu.php" class="btn btn-secondary"><i class="bi bi-arrow-left-circle"></i> Volver al Menú</a>
         </div>
     </div>
 
