@@ -1,7 +1,7 @@
 <?php
 // =================================================================================
 // ARCHIVO: dashboard.php
-// ESTADO: FINAL (KPI 'Valor Neto' calculado en tiempo real - Se deprecia solo)
+// ESTADO: FINAL (KPI 'Valor Neto' calculado con fecha de corte fija y año comercial 360 días)
 // =================================================================================
 
 // 1. CONFIGURACIÓN
@@ -91,12 +91,17 @@ $kpi_valor = $r['V'] ?? 0;
 $r = consulta($conexion, "SELECT COUNT(DISTINCT a.id_usuario_responsable) as U $joins $sql_where", $params)->fetch_assoc();
 $kpi_users = $r['U'] ?? 0;
 
-// B. KPI FINANCIERO AVANZADO: VALOR NETO EN LIBROS (Tiempo Real)
-// Cálculo: Costo - ((Costo - Residual) * (% de Vida Usada))
+// B. KPI FINANCIERO AVANZADO: VALOR NETO EN LIBROS
+// Cálculo: Costo - ((Costo - Residual) / Vida Útil en meses) * Meses transcurridos
 // Aplica para TODOS los activos, sin importar su valor de compra (sin tope mínimo SMMLV).
+// Usa una FECHA DE CORTE FIJA (no la fecha de hoy) y año comercial de 360 días
+// (mes = 30 días), para que coincida con el método de cálculo del área financiera.
+// IMPORTANTE: actualizar esta fecha manualmente en cada cierre contable.
+$fecha_corte_contable = '2025-12-31';
+
 $params_dep = $params; 
 
-// Esta consulta matemática calcula la depreciación exacta en el momento de la carga
+// Esta consulta matemática calcula la depreciación exacta con la fecha de corte fija
 $sql_dep = "
 SELECT SUM(
     CASE 
@@ -104,12 +109,12 @@ SELECT SUM(
         WHEN a.vida_util IS NULL OR a.vida_util = 0 OR a.fecha_compra IS NULL THEN a.valor_aproximado
         
         -- Si ya pasó su vida útil (Meses uso >= Vida Total), vale el residual
-        WHEN TIMESTAMPDIFF(MONTH, a.fecha_compra, CURDATE()) >= (a.vida_util * 12) THEN COALESCE(a.valor_residual, 0)
+        WHEN (GREATEST(0, DATEDIFF('$fecha_corte_contable', a.fecha_compra)) / 30) >= (a.vida_util * 12) THEN COALESCE(a.valor_residual, 0)
         
-        -- Cálculo Normal: Costo - Depreciación Acumulada
+        -- Cálculo Normal: Costo - Depreciación Acumulada (año comercial 360 días / mes de 30 días)
         ELSE 
             a.valor_aproximado - (
-                ((a.valor_aproximado - COALESCE(a.valor_residual, 0)) / (a.vida_util * 12)) * TIMESTAMPDIFF(MONTH, a.fecha_compra, CURDATE())
+                ((a.valor_aproximado - COALESCE(a.valor_residual, 0)) / (a.vida_util * 12)) * (GREATEST(0, DATEDIFF('$fecha_corte_contable', a.fecha_compra)) / 30)
             )
     END
 ) as ValorNeto

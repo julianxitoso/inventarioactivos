@@ -2,7 +2,7 @@
 // =================================================================================
 // ARCHIVO: depreciacion.php
 // DESCRIPCIÓN: Análisis Contable con Base Fija SMMLV 2025
-// ESTADO: FINAL (Línea recta para TODOS los activos, sin tope mínimo)
+// ESTADO: FINAL (Línea recta, fecha de corte fija y año comercial de 360 días)
 // =================================================================================
 
 // 1. CONFIGURACIÓN Y SEGURIDAD
@@ -57,6 +57,11 @@ $rol_usuario_actual_sesion = $_SESSION['rol_usuario'] ?? 'Desconocido';
 // Se utiliza únicamente el SMMLV de 2025 como referencia informativa (ya NO se usa como tope mínimo).
 // Todos los activos se deprecian en línea recta sin importar su valor de compra.
 $salario_minimo_base = 1423500; // Valor Oficial 2025 (solo referencia informativa)
+
+// FECHA DE CORTE CONTABLE (debe coincidir con la que usa el área Financiera)
+// El cálculo usa año comercial de 360 días (mes = 30 días), igual método que Financiera.
+// IMPORTANTE: actualizar esta fecha manualmente en cada cierre contable.
+$fecha_corte_contable = '2025-12-31';
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -191,6 +196,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- DATOS INYECTADOS DESDE PHP ---
     const SALARIO_BASE = <?= $salario_minimo_base ?>; // Fijo 2025 (solo referencia informativa)
+    const FECHA_CORTE_CONTABLE = '<?= $fecha_corte_contable ?>'; // Fecha de corte fija, igual a Financiera
 
     formFiltros.addEventListener('submit', function(e) {
         e.preventDefault();
@@ -278,7 +284,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // === LÓGICA FINANCIERA ACTUALIZADA (LÍNEA RECTA PARA TODOS LOS ACTIVOS, SIN TOPE MÍNIMO) ===
+    // === LÓGICA FINANCIERA ACTUALIZADA (LÍNEA RECTA + FECHA DE CORTE FIJA + AÑO COMERCIAL 360 DÍAS) ===
     function mostrarDetalles(activo) {
         const valorCompra = parseFloat(activo.valor_aproximado || 0);
         const valorResidual = parseFloat(activo.valor_residual || 0);
@@ -317,15 +323,15 @@ document.addEventListener('DOMContentLoaded', function () {
             depreciacion.aplica = true;
             
             const fechaInicio = new Date(fechaCompra + 'T00:00:00');
-            const fechaActual = new Date();
+            // Fecha de corte FIJA (igual a Financiera), no la fecha de hoy.
+            const fechaCorte = new Date(FECHA_CORTE_CONTABLE + 'T00:00:00');
+            const MS_POR_DIA = 1000 * 60 * 60 * 24;
             
-            // Calcular meses de uso
-            if (fechaActual >= fechaInicio) {
-                mesesTranscurridos = (fechaActual.getFullYear() - fechaInicio.getFullYear()) * 12 + (fechaActual.getMonth() - fechaInicio.getMonth());
-                if (fechaActual.getDate() < fechaInicio.getDate()) {
-                   mesesTranscurridos--; 
-                }
-                if (mesesTranscurridos < 0) mesesTranscurridos = 0;
+            // Calcular meses de uso con convención contable de año comercial de 360 días
+            // (cada mes = 30 días), igual método que usa Financiera.
+            if (fechaCorte >= fechaInicio) {
+                const diasTranscurridos = Math.floor((fechaCorte - fechaInicio) / MS_POR_DIA);
+                mesesTranscurridos = diasTranscurridos / 30;
             }
 
             const vidaUtilMeses = vidaUtilAnios * 12;
@@ -344,7 +350,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             depreciacion.mesesRestantes = Math.max(0, vidaUtilMeses - mesesTranscurridos);
             
-            if (fechaActual < fechaInicio) depreciacion.estado = 'No iniciada (Fecha futura)';
+            if (fechaCorte < fechaInicio) depreciacion.estado = 'No iniciada (Fecha futura)';
             else if (depreciacion.valorEnLibros <= valorResidual) depreciacion.estado = 'Totalmente Depreciado';
             else depreciacion.estado = 'En Curso';
             
@@ -370,6 +376,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     <ul class="list-group list-group-flush mb-3">
                         <li class="list-group-item d-flex justify-content-between"><span>Responsable:</span> <span class="text-end text-truncate" style="max-width:180px;">${escape(activo.nombre_responsable)}</span></li>
                         <li class="list-group-item d-flex justify-content-between"><span>Fecha Compra:</span> <span>${fechaCompra || 'N/A'}</span></li>
+                        <li class="list-group-item d-flex justify-content-between"><span>Fecha de Corte (Financiera):</span> <span>${FECHA_CORTE_CONTABLE}</span></li>
                         <li class="list-group-item d-flex justify-content-between bg-light"><span>Costo Histórico:</span> <strong>${f(valorCompra)}</strong></li>
                         <li class="list-group-item d-flex justify-content-between"><span>SMMLV Base (2025):</span> <span>${f2(salarioAplicable)}</span></li>
                         <li class="list-group-item d-flex justify-content-between"><span>Valor en Salarios:</span> <span>${valorEnSalarios.toFixed(2)} SMMLV</span></li>
@@ -380,7 +387,7 @@ document.addEventListener('DOMContentLoaded', function () {
         
         let htmlCalculo = `
             <div class="card card-depreciacion h-100 mt-3 shadow-sm border-0">
-                <div class="card-header bg-white fw-bold text-success border-bottom-0"><i class="bi bi-calculator"></i> Resultado Contable (${new Date().getFullYear()})</div>
+                <div class="card-header bg-white fw-bold text-success border-bottom-0"><i class="bi bi-calculator"></i> Resultado Contable (${new Date(FECHA_CORTE_CONTABLE + 'T00:00:00').getFullYear()})</div>
                 <div class="card-body">`;
         
         if(depreciacion.aplica) {
@@ -419,7 +426,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 <ul class="list-group list-group-flush small">
                     <li class="list-group-item d-flex justify-content-between px-0"><span>Vida Útil:</span> <span>${vidaUtilAnios} años (${vidaUtilAnios*12} m)</span></li>
-                    <li class="list-group-item d-flex justify-content-between px-0"><span>Transcurrido:</span> <span>${mesesTranscurridos} meses</span></li>
+                    <li class="list-group-item d-flex justify-content-between px-0"><span>Transcurrido:</span> <span>${mesesTranscurridos.toFixed(1)} meses</span></li>
                 </ul>
                 
                 <div class="mt-2 text-center">
