@@ -1,10 +1,9 @@
 <?php
 // =================================================================================
 // ARCHIVO: dashboard.php
-// ESTADO: FINAL (KPIs 'Valor Neto' y 'Total Depreciado' con fecha de corte fija y año comercial 360 días)
+// ESTADO: FÓRMULA FINANCIERA EXACTA (Sin topes SMMLV, sin valor residual, Días/360)
 // =================================================================================
 
-// 1. CONFIGURACIÓN
 ini_set('display_errors', 0); 
 error_reporting(E_ALL);
 
@@ -81,9 +80,7 @@ $joins = " FROM activos_tecnologicos a
             LEFT JOIN centros_costo cc ON a.id_centro_costo = cc.id_centro_costo
             LEFT JOIN regionales r ON cc.id_regional = r.id_regional ";
 
-// 5. DATOS
-
-// A. KPIs Básicos
+// 5. DATOS BÁSICOS
 $r = consulta($conexion, "SELECT COUNT(a.id) as T, SUM(a.valor_aproximado) as V $joins $sql_where", $params)->fetch_assoc();
 $kpi_total = $r['T'] ?? 0;
 $kpi_valor = $r['V'] ?? 0;
@@ -91,66 +88,35 @@ $kpi_valor = $r['V'] ?? 0;
 $r = consulta($conexion, "SELECT COUNT(DISTINCT a.id_usuario_responsable) as U $joins $sql_where", $params)->fetch_assoc();
 $kpi_users = $r['U'] ?? 0;
 
-// B. KPI FINANCIERO: FECHA DE CORTE FIJA Y AÑO COMERCIAL DE 360 DÍAS
-// Se usa una FECHA DE CORTE FIJA (no la fecha de hoy) y año comercial de 360 días
-// (mes = 30 días), para que coincida con el método de cálculo del área financiera.
-// Los activos comprados después de la fecha de corte (ej. año 2026) quedan
-// automáticamente en depreciación = 0, porque los días transcurridos hasta el
-// corte dan negativo y se fuerzan a 0 con GREATEST(0, ...).
-// IMPORTANTE: actualizar esta fecha manualmente en cada cierre contable.
+// =========================================================================
+// KPI FINANCIEROS (REPLICANDO EXACTAMENTE LA FÓRMULA FINANCIERA)
+// =========================================================================
 $fecha_corte_contable = '2025-12-31';
-
 $params_dep = $params; 
 
-// B.1 VALOR NETO EN LIBROS (lo que le queda por depreciar a cada activo)
-$sql_dep = "
-SELECT SUM(
-    CASE 
-        -- Si no tiene vida útil o fecha, tomamos el valor de compra (no se deprecia)
-        WHEN a.vida_util IS NULL OR a.vida_util = 0 OR a.fecha_compra IS NULL THEN a.valor_aproximado
-        
-        -- Si ya pasó su vida útil (Meses uso >= Vida Total), vale el residual
-        WHEN (GREATEST(0, DATEDIFF('$fecha_corte_contable', a.fecha_compra)) / 30) >= (a.vida_util * 12) THEN COALESCE(a.valor_residual, 0)
-        
-        -- Cálculo Normal: Costo - Depreciación Acumulada (año comercial 360 días / mes de 30 días)
-        ELSE 
-            a.valor_aproximado - (
-                ((a.valor_aproximado - COALESCE(a.valor_residual, 0)) / (a.vida_util * 12)) * (GREATEST(0, DATEDIFF('$fecha_corte_contable', a.fecha_compra)) / 30)
-            )
-    END
-) as ValorNeto
-$joins 
-$sql_where 
-";
+// AÑOS DEPRECIADOS: (Fecha Corte - Fecha Compra) / 360 (GREATEST(0) Evita negativos para compras 2026)
+// VALOR DEPRECIADO: (Valor / Vida Util) * Años Depreciados (LEAST() asegura no pasar del 100%)
 
-$r_dep = consulta($conexion, $sql_dep, $params_dep)->fetch_assoc();
-$kpi_depreciables = $r_dep['ValorNeto'] ?? 0;
-
-// B.2 TOTAL DEPRECIADO (lo que ya se le depreció a cada activo, hasta la fecha de corte)
-// Es el complemento de B.1: Costo - Valor Neto = Depreciación Acumulada.
-// Los activos sin vida útil/fecha no aportan nada aquí (no se han depreciado, valor = 0).
+// B.1 TOTAL DEPRECIADO (Lo que ya se consumió)
 $sql_dep_acumulada = "
 SELECT SUM(
     CASE 
-        -- Sin vida útil o fecha: no se deprecia, su acumulada es 0
         WHEN a.vida_util IS NULL OR a.vida_util = 0 OR a.fecha_compra IS NULL THEN 0
-        
-        -- Ya pasó su vida útil: toda la base depreciable (Costo - Residual) ya se acumuló
-        WHEN (GREATEST(0, DATEDIFF('$fecha_corte_contable', a.fecha_compra)) / 30) >= (a.vida_util * 12) THEN (a.valor_aproximado - COALESCE(a.valor_residual, 0))
-        
-        -- Cálculo Normal: Depreciación Acumulada (año comercial 360 días / mes de 30 días)
-        -- Si la fecha de compra es posterior al corte (ej. 2026), el DATEDIFF da negativo,
-        -- GREATEST(0,...) lo deja en 0, y por lo tanto la acumulada también queda en 0.
-        ELSE 
-            ((a.valor_aproximado - COALESCE(a.valor_residual, 0)) / (a.vida_util * 12)) * (GREATEST(0, DATEDIFF('$fecha_corte_contable', a.fecha_compra)) / 30)
+        ELSE LEAST(
+            a.valor_aproximado, 
+            (a.valor_aproximado / a.vida_util) * (GREATEST(0, DATEDIFF('$fecha_corte_contable', a.fecha_compra)) / 360)
+        )
     END
 ) as TotalDepreciado
 $joins 
 $sql_where 
 ";
-
 $r_dep_acum = consulta($conexion, $sql_dep_acumulada, $params_dep)->fetch_assoc();
 $kpi_total_depreciado = $r_dep_acum['TotalDepreciado'] ?? 0;
+
+// B.2 VALOR NETO EN LIBROS (Lo que falta por consumir: Costo Total - Total Depreciado)
+$kpi_depreciables = $kpi_valor - $kpi_total_depreciado;
+
 
 // C. Estados
 $est_lbl = []; $est_dat = [];
@@ -187,15 +153,14 @@ $d_emp = []; $l_emp = [];
 $res = consulta($conexion, "SELECT u.empresa as N, COUNT(a.id) as C $joins $sql_where AND u.empresa != '' GROUP BY u.empresa ORDER BY C DESC", $params);
 while($row = $res->fetch_assoc()) { $l_emp[] = limpiar($row['N']); $d_emp[] = $row['C']; }
 
-
 // RETORNO AJAX
 $payload = [
     'kpi' => [
         'total' => number_format($kpi_total), 
         'valor' => '$'.number_format($kpi_valor,0,',','.'), 
         'users' => number_format($kpi_users),
-        'depreciables' => '$'.number_format($kpi_depreciables,0,',','.'), // Valor Neto (lo que falta por depreciar)
-        'depreciado' => '$'.number_format($kpi_total_depreciado,0,',','.') // Total Depreciado (lo que ya se depreció)
+        'depreciables' => '$'.number_format($kpi_depreciables,0,',','.'), 
+        'depreciado' => '$'.number_format($kpi_total_depreciado,0,',','.') 
     ],
     'charts' => [
         'estado' => ['l' => $est_lbl, 'd' => $est_dat],

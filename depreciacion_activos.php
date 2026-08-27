@@ -1,11 +1,10 @@
 <?php
 // =================================================================================
 // ARCHIVO: depreciacion.php
-// DESCRIPCIÓN: Análisis Contable con Base Fija SMMLV 2025
-// ESTADO: FINAL (Línea recta, fecha de corte fija y año comercial de 360 días)
+// DESCRIPCIÓN: Análisis Contable EXACTO según reglas del Dpto. Financiero
+// ESTADO: FINAL (Sin topes, sin valor residual, Días reales / 360)
 // =================================================================================
 
-// 1. CONFIGURACIÓN Y SEGURIDAD
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
@@ -21,7 +20,6 @@ restringir_acceso_pagina(['admin', 'auditor', 'registrador', 'tecnico']);
 
 require_once __DIR__ . '/backend/db.php';
 
-// Validar conexión
 if (isset($conn) && !isset($conexion)) { $conexion = $conn; }
 
 $error_conexion_db = null;
@@ -30,37 +28,21 @@ $regionales = [];
 $empresas_disponibles = ['Arpesod', 'Finansueños'];
 
 if (!isset($conexion) || (method_exists($conexion, 'connect_error') && $conexion->connect_error) || !$conexion) {
-    $error_conexion_db = "Error crítico de conexión a la base de datos. Funcionalidad limitada.";
-    error_log("Fallo CRÍTICO de conexión a BD (depreciacion.php): " . ($conexion->connect_error ?? 'Desconocido'));
+    $error_conexion_db = "Error crítico de conexión a la base de datos.";
 } else {
     $conexion->set_charset("utf8mb4");
     
-    // Cargar Tipos de Activo
     $result_tipos = $conexion->query("SELECT id_tipo_activo, nombre_tipo_activo FROM tipos_activo ORDER BY nombre_tipo_activo");
-    if ($result_tipos) {
-        $opciones_tipos = $result_tipos->fetch_all(MYSQLI_ASSOC);
-    }
+    if ($result_tipos) { $opciones_tipos = $result_tipos->fetch_all(MYSQLI_ASSOC); }
 
-    // Cargar Regionales desde BD
     $result_reg = $conexion->query("SELECT nombre_regional FROM regionales ORDER BY nombre_regional");
-    if ($result_reg) {
-        while($row = $result_reg->fetch_assoc()) {
-            $regionales[] = $row['nombre_regional'];
-        }
-    }
+    if ($result_reg) { while($row = $result_reg->fetch_assoc()) { $regionales[] = $row['nombre_regional']; } }
 }
 
 $nombre_usuario_actual_sesion = $_SESSION['nombre_usuario_completo'] ?? 'Usuario';
 $rol_usuario_actual_sesion = $_SESSION['rol_usuario'] ?? 'Desconocido';
 
-// --- CONFIGURACIÓN DE DEPRECIACIÓN (BASE 2025) ---
-// Se utiliza únicamente el SMMLV de 2025 como referencia informativa (ya NO se usa como tope mínimo).
-// Todos los activos se deprecian en línea recta sin importar su valor de compra.
-$salario_minimo_base = 1423500; // Valor Oficial 2025 (solo referencia informativa)
-
-// FECHA DE CORTE CONTABLE (debe coincidir con la que usa el área Financiera)
-// El cálculo usa año comercial de 360 días (mes = 30 días), igual método que Financiera.
-// IMPORTANTE: actualizar esta fecha manualmente en cada cierre contable.
+// FECHA DE CORTE FIJA (Igual a Financiera)
 $fecha_corte_contable = '2025-12-31';
 ?>
 <!DOCTYPE html>
@@ -129,7 +111,6 @@ $fecha_corte_contable = '2025-12-31';
                                         <option value="">-- Estado Depreciación --</option>
                                         <option value="en_curso">En Curso</option>
                                         <option value="depreciado">Totalmente Depreciado</option>
-                                        <option value="proximo">Próximo a Vencer (6m)</option>
                                         <option value="no_aplica">No Aplica para Depreciar</option>
                                     </select>
                                 </div>
@@ -165,21 +146,6 @@ $fecha_corte_contable = '2025-12-31';
     <?php endif; ?>
 </div>
 
-<footer class="footer-custom mt-auto py-3 bg-light border-top shadow-sm">
-    <div class="container text-center">
-        <div class="row align-items-center">
-            <div class="col-md-6 text-md-start mb-2 mb-md-0">
-                <small class="text-muted">Sitio web desarrollado por <a href="https://www.julianxitoso.com" target="_blank" rel="noopener noreferrer" class="text-decoration-none text-primary">@julianxitoso.com</a></small>
-            </div>
-            <div class="col-md-6 text-md-end">
-                <a href="#" target="_blank" class="text-muted me-3"><i class="bi bi-facebook" style="font-size: 1.5rem;"></i></a>
-                <a href="#" target="_blank" class="text-muted me-3"><i class="bi bi-instagram" style="font-size: 1.5rem;"></i></a>
-                <a href="#" target="_blank" class="text-muted"><i class="bi bi-tiktok" style="font-size: 1.5rem;"></i></a>
-            </div>
-        </div>
-    </div>
-</footer>
-
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
@@ -194,9 +160,7 @@ document.addEventListener('DOMContentLoaded', function () {
     
     let activosCache = [];
 
-    // --- DATOS INYECTADOS DESDE PHP ---
-    const SALARIO_BASE = <?= $salario_minimo_base ?>; // Fijo 2025 (solo referencia informativa)
-    const FECHA_CORTE_CONTABLE = '<?= $fecha_corte_contable ?>'; // Fecha de corte fija, igual a Financiera
+    const FECHA_CORTE_CONTABLE = '<?= $fecha_corte_contable ?>'; 
 
     formFiltros.addEventListener('submit', function(e) {
         e.preventDefault();
@@ -278,92 +242,60 @@ document.addEventListener('DOMContentLoaded', function () {
                     <small>ID: ${activo.id}</small>
                 </div>
                 <p class="mb-1 small text-truncate">S/N: ${activo.serie || 'N/A'}</p>
-                <small class="text-muted text-truncate d-block">Resp: ${activo.nombre_responsable || 'Sin asignar'}</small>
+                <small class="text-muted text-truncate d-block">Costo: $${new Intl.NumberFormat('es-CO').format(activo.valor_aproximado || 0)}</small>
             `;
             resultadosContainer.appendChild(item);
         });
     }
 
-    // === LÓGICA FINANCIERA ACTUALIZADA (LÍNEA RECTA + FECHA DE CORTE FIJA + AÑO COMERCIAL 360 DÍAS) ===
+    // === LÓGICA FINANCIERA EXACTA (FÓRMULA CRUDA) ===
     function mostrarDetalles(activo) {
         const valorCompra = parseFloat(activo.valor_aproximado || 0);
-        const valorResidual = parseFloat(activo.valor_residual || 0);
         const fechaCompra = activo.fecha_compra;
-        const tipoActivo = (activo.nombre_tipo_activo || '').toLowerCase();
-
-        // 1. Salario Base Fijo (2025)
-        const salarioAplicable = SALARIO_BASE;
-
-        // 2. Determinar Vida Útil Fiscal (Reglas Negocio)
-        let vidaUtilAnios = parseInt(activo.vida_util_sugerida || 0, 10);
-        let mensajeFiscal = '';
-
-        if (tipoActivo.includes('computador') || tipoActivo.includes('portatil') || tipoActivo.includes('todo en 1')) {
-            vidaUtilAnios = 5; 
-            mensajeFiscal = '<p class="small text-info mb-0"><i class="bi bi-info-circle"></i> Vida útil fiscal: 5 años (Tecnología).</p>';
-        } else if (tipoActivo.includes('celular') || tipoActivo.includes('telefono')) {
-            vidaUtilAnios = 5; 
-            mensajeFiscal = '<p class="small text-info mb-0"><i class="bi bi-info-circle"></i> Vida útil fiscal: 5 años (Comunicaciones).</p>';
-        } else if (tipoActivo.includes('vehiculo') || tipoActivo.includes('carro') || tipoActivo.includes('moto')) {
-            vidaUtilAnios = 10; 
-            mensajeFiscal = '<p class="small text-info mb-0"><i class="bi bi-info-circle"></i> Vida útil fiscal: 10 años (Flota).</p>';
-        } else if (tipoActivo.includes('mueble') || tipoActivo.includes('silla') || tipoActivo.includes('escritorio')) {
-            vidaUtilAnios = 10; 
-            mensajeFiscal = '<p class="small text-info mb-0"><i class="bi bi-info-circle"></i> Vida útil fiscal: 10 años (Muebles).</p>';
-        }
-
+        const vidaUtilAnios = parseFloat(activo.vida_util || 0); // OJO: Dato extraído 100% de la Base de Datos
+        
         let depreciacion = {};
-        let mesesTranscurridos = 0;
+        let diasTranscurridos = 0;
+        let aniosDepreciados = 0;
         
-        // Calcular valor en Salarios Mínimos (Base 2025) - Solo dato informativo, ya NO se usa como tope.
-        const valorEnSalarios = salarioAplicable > 0 ? (valorCompra / salarioAplicable) : 0;
-        
-        // --- CASO 1: ACTIVO FIJO DEPRECIABLE (Línea Recta, sin importar el valor de compra) ---
+        // Aplica únicamente si el activo tiene Fecha y Vida Útil asignada en BD
         if (fechaCompra && vidaUtilAnios > 0) {
             depreciacion.aplica = true;
             
-            const fechaInicio = new Date(fechaCompra + 'T00:00:00');
-            // Fecha de corte FIJA (igual a Financiera), no la fecha de hoy.
-            const fechaCorte = new Date(FECHA_CORTE_CONTABLE + 'T00:00:00');
+            // Cálculos precisos usando zona horaria neutra para evitar saltos de día
+            const partsInicio = fechaCompra.split('-');
+            const fechaInicio = Date.UTC(partsInicio[0], partsInicio[1] - 1, partsInicio[2]);
+            
+            const partsCorte = FECHA_CORTE_CONTABLE.split('-');
+            const fechaCorte = Date.UTC(partsCorte[0], partsCorte[1] - 1, partsCorte[2]);
+            
             const MS_POR_DIA = 1000 * 60 * 60 * 24;
             
-            // Calcular meses de uso con convención contable de año comercial de 360 días
-            // (cada mes = 30 días), igual método que usa Financiera.
-            if (fechaCorte >= fechaInicio) {
-                const diasTranscurridos = Math.floor((fechaCorte - fechaInicio) / MS_POR_DIA);
-                mesesTranscurridos = diasTranscurridos / 30;
+            // Controla que los de 2026 no generen depreciación negativa
+            if (fechaCorte > fechaInicio) {
+                diasTranscurridos = Math.floor((fechaCorte - fechaInicio) / MS_POR_DIA);
             }
 
-            const vidaUtilMeses = vidaUtilAnios * 12;
-            const valorBase = Math.max(0, valorCompra - valorResidual);
+            // FÓRMULA DE DEPRECIACIÓN EXACTA DE FINANCIERA
+            aniosDepreciados = diasTranscurridos / 360;
+            const depCalculada = (valorCompra / vidaUtilAnios) * aniosDepreciados;
             
-            // Línea Recta
-            depreciacion.depMensual = valorBase / vidaUtilMeses;
-            
-            const mesesEfectivos = Math.min(mesesTranscurridos, vidaUtilMeses);
-            depreciacion.depAcumulada = depreciacion.depMensual * mesesEfectivos;
-            
-            if (depreciacion.depAcumulada > valorBase) depreciacion.depAcumulada = valorBase;
-
+            // TOPES: Nunca depreciar más del valor de compra, ni menos de 0
+            depreciacion.depAcumulada = Math.min(valorCompra, Math.max(0, depCalculada));
             depreciacion.valorEnLibros = valorCompra - depreciacion.depAcumulada;
-            if (depreciacion.valorEnLibros < valorResidual) depreciacion.valorEnLibros = valorResidual;
-
-            depreciacion.mesesRestantes = Math.max(0, vidaUtilMeses - mesesTranscurridos);
             
-            if (fechaCorte < fechaInicio) depreciacion.estado = 'No iniciada (Fecha futura)';
-            else if (depreciacion.valorEnLibros <= valorResidual) depreciacion.estado = 'Totalmente Depreciado';
+            if (fechaCorte <= fechaInicio) depreciacion.estado = 'No iniciada (Compra Posterior al Corte)';
+            else if (depreciacion.valorEnLibros <= 0) depreciacion.estado = 'Totalmente Depreciado';
             else depreciacion.estado = 'En Curso';
             
         } else {
-            // CASO 2: DATOS FALTANTES
             depreciacion.aplica = false;
-            depreciacion.mensaje_no_aplica = "Faltan datos clave (Fecha Compra o Vida Útil) para calcular.";
+            depreciacion.mensaje_no_aplica = "El activo no cuenta con Fecha de Compra o Vida Útil en la Base de Datos.";
             depreciacion.valorEnLibros = valorCompra;
         }
 
         // RENDER HTML
         const f = (num) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(num || 0);
-        const f2 = (num) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(num || 0);
         const escape = (str) => str ? String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;') : '';
 
         let htmlDetalles = `
@@ -371,17 +303,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 <div class="card-header bg-white fw-bold text-primary border-bottom-0"><i class="bi bi-box-seam"></i> Ficha Técnica</div>
                 <div class="card-body small">
                     <h5 class="card-title text-dark mb-0">${escape(activo.nombre_tipo_activo)} ${escape(activo.marca)}</h5>
-                    <p class="text-muted mb-3">${escape(activo.serie)}</p>
+                    <p class="text-muted mb-3">Serie: ${escape(activo.serie)}</p>
                     
                     <ul class="list-group list-group-flush mb-3">
                         <li class="list-group-item d-flex justify-content-between"><span>Responsable:</span> <span class="text-end text-truncate" style="max-width:180px;">${escape(activo.nombre_responsable)}</span></li>
-                        <li class="list-group-item d-flex justify-content-between"><span>Fecha Compra:</span> <span>${fechaCompra || 'N/A'}</span></li>
-                        <li class="list-group-item d-flex justify-content-between"><span>Fecha de Corte (Financiera):</span> <span>${FECHA_CORTE_CONTABLE}</span></li>
-                        <li class="list-group-item d-flex justify-content-between bg-light"><span>Costo Histórico:</span> <strong>${f(valorCompra)}</strong></li>
-                        <li class="list-group-item d-flex justify-content-between"><span>SMMLV Base (2025):</span> <span>${f2(salarioAplicable)}</span></li>
-                        <li class="list-group-item d-flex justify-content-between"><span>Valor en Salarios:</span> <span>${valorEnSalarios.toFixed(2)} SMMLV</span></li>
+                        <li class="list-group-item d-flex justify-content-between"><span>Fecha Compra:</span> <span class="fw-bold text-dark">${fechaCompra || 'N/A'}</span></li>
+                        <li class="list-group-item d-flex justify-content-between"><span>Fecha de Corte:</span> <span>${FECHA_CORTE_CONTABLE}</span></li>
+                        <li class="list-group-item d-flex justify-content-between bg-light"><span>Costo Histórico:</span> <strong class="text-primary">${f(valorCompra)}</strong></li>
                     </ul>
-                    ${mensajeFiscal}
+                    <p class="small text-info mb-0"><i class="bi bi-info-circle"></i> Vida útil: <strong>${vidaUtilAnios} años</strong> (Dato exacto de BD).</p>
                 </div>
             </div>`;
         
@@ -403,30 +333,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 <div class="progress mb-3" style="height: 15px;">
                     <div class="progress-bar ${colorBarra}" role="progressbar" style="width: ${porcentaje}%" aria-valuenow="${porcentaje}" aria-valuemin="0" aria-valuemax="100"></div>
                 </div>
-                <div class="d-flex justify-content-between small text-muted mb-3">
-                    <span>0%</span>
-                    <span>Avance Depreciación: ${porcentaje.toFixed(1)}%</span>
-                    <span>100%</span>
-                </div>
                 
                 <div class="row text-center mb-3 g-2">
-                    <div class="col-6">
-                        <div class="p-2 bg-light rounded">
-                            <small class="d-block text-muted">Acumulada</small>
-                            <span class="fw-bold text-danger">${f(depreciacion.depAcumulada)}</span>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="p-2 bg-light rounded">
-                            <small class="d-block text-muted">Mensual</small>
-                            <span class="fw-bold text-dark">${f(depreciacion.depMensual)}</span>
+                    <div class="col-12">
+                        <div class="p-2 bg-light rounded border border-danger border-opacity-25">
+                            <small class="d-block text-muted">Total Depreciado (Valor Consumido)</small>
+                            <span class="fw-bold text-danger fs-5">${f(depreciacion.depAcumulada)}</span>
                         </div>
                     </div>
                 </div>
 
                 <ul class="list-group list-group-flush small">
-                    <li class="list-group-item d-flex justify-content-between px-0"><span>Vida Útil:</span> <span>${vidaUtilAnios} años (${vidaUtilAnios*12} m)</span></li>
-                    <li class="list-group-item d-flex justify-content-between px-0"><span>Transcurrido:</span> <span>${mesesTranscurridos.toFixed(1)} meses</span></li>
+                    <li class="list-group-item d-flex justify-content-between px-0"><span>Días Transcurridos:</span> <span>${diasTranscurridos} días</span></li>
+                    <li class="list-group-item d-flex justify-content-between px-0"><span>Años Depreciados:</span> <span>${aniosDepreciados.toFixed(2)} años</span></li>
                 </ul>
                 
                 <div class="mt-2 text-center">
@@ -434,7 +353,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 </div>`;
         } else {
             htmlCalculo += `<div class="alert alert-warning small">${depreciacion.mensaje_no_aplica}</div>
-            <p class="text-center mt-3">Valor en Libros: <strong>${f(depreciacion.valorEnLibros)}</strong></p>`;
+            <p class="text-center mt-3">Valor Neto Actual: <strong>${f(depreciacion.valorEnLibros)}</strong></p>`;
         }
         
         htmlCalculo += `</div></div>`;
@@ -442,6 +361,5 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
 </script>
-
 </body>
 </html>
