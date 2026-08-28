@@ -22,19 +22,18 @@ try {
     $fecha_hasta = trim($_GET['fecha_hasta'] ?? '');
     $estado_depreciacion = trim($_GET['estado_depreciacion'] ?? '');
 
-    // --- Construcción de la consulta (SIN la tabla 'cargos' que causa el Fatal Error) ---
+    // --- Construcción de la consulta (Con la tabla Cargos restaurada y sin Joins extra) ---
     $sql = "SELECT 
                 a.id, a.serie, a.marca, a.estado, a.valor_aproximado, a.valor_residual, 
                 a.fecha_compra, a.metodo_depreciacion, a.detalles, a.vida_util, a.Codigo_Inv,
                 u.nombre_completo AS nombre_responsable,
                 u.usuario AS cedula_responsable,
+                c.nombre_cargo AS cargo_responsable,
                 ta.nombre_tipo_activo AS nombre_tipo_activo
             FROM activos_tecnologicos a
             LEFT JOIN usuarios u ON a.id_usuario_responsable = u.id
+            LEFT JOIN cargos c ON u.id_cargo = c.id_cargo
             LEFT JOIN tipos_activo ta ON a.id_tipo_activo = ta.id_tipo_activo
-            LEFT JOIN categorias_activo cat ON ta.id_categoria = cat.id_categoria
-            LEFT JOIN centros_costo cc ON a.id_centro_costo = cc.id_centro_costo
-            LEFT JOIN regionales r ON cc.id_regional = r.id_regional
             WHERE a.estado != 'Dado de Baja'";
 
     $params = [];
@@ -56,13 +55,15 @@ try {
         array_push($params, $searchTerm, $searchTerm, $q, $searchTerm);
         $types .= 'ssss';
     }
+    
+    // Filtros originales tal cual los tenías
     if (!empty($tipo_activo)) { $condiciones[] = "a.id_tipo_activo = ?"; $params[] = $tipo_activo; $types .= 'i'; }
-    if (!empty($regional)) { $condiciones[] = "r.nombre_regional = ?"; $params[] = $regional; $types .= 's'; }
+    if (!empty($regional)) { $condiciones[] = "u.regional = ?"; $params[] = $regional; $types .= 's'; }
     if (!empty($empresa)) { $condiciones[] = "u.empresa = ?"; $params[] = $empresa; $types .= 's'; }
     if (!empty($fecha_desde)) { $condiciones[] = "a.fecha_compra >= ?"; $params[] = $fecha_desde; $types .= 's'; }
     if (!empty($fecha_hasta)) { $condiciones[] = "a.fecha_compra <= ?"; $params[] = $fecha_hasta; $types .= 's'; }
 
-    // Filtros de Depreciación
+    // === REGLA MATEMÁTICA FINANCIERA EXACTA ===
     if (!empty($estado_depreciacion)) {
         $fechaFinVidaUtilSQL = "DATE_ADD(a.fecha_compra, INTERVAL a.vida_util YEAR)";
         $esDepreciableSQL = " (a.valor_aproximado > 0 AND a.fecha_compra IS NOT NULL AND a.fecha_compra > '1990-01-01' AND a.vida_util > 0) ";
@@ -89,7 +90,7 @@ try {
 
     $stmt = $conexion->prepare($sql);
     if (!$stmt) {
-        throw new Exception("Error de SQL Crítico: " . $conexion->error);
+        throw new Exception("Error SQL: " . $conexion->error);
     }
 
     if (!empty($params)) {
@@ -107,7 +108,6 @@ try {
     echo json_encode($activos);
 
 } catch (Throwable $e) {
-    // Escudo Maestro: Atrapa cualquier error fatal y lo devuelve legible
     ob_end_clean();
     http_response_code(500);
     echo json_encode(['error' => $e->getMessage()]);
