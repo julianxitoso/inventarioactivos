@@ -2,7 +2,7 @@
 ob_start();
 // =================================================================================
 // ARCHIVO: procesar_importacion_completo.php
-// VERSIÓN: DEFINITIVA REAL (Limpiador Inteligente + Fechas + Reporte Excel)
+// VERSIÓN: DEFINITIVA (Limpiador Visual de Moneda + Fechas + Excel de Omitidos)
 // =================================================================================
 
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -112,28 +112,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $estado = in_array(strtoupper($raw_estado), $valores_nulos_comunes) ? '' : mb_strtoupper($raw_estado, 'UTF-8');
 
                     // ========================================================
-                    // LIMPIEZA INTELIGENTE DE PRECIOS (Vacuna Notación Científica)
+                    // LIMPIEZA VISUAL DE MONEDA (VACUNA ANTI-RECORTES)
                     // ========================================================
-                    $cellVal = $sheet->getCell('J' . $row)->getCalculatedValue();
+                    // getFormattedValue toma foto a lo que se ve en Excel, no a su formato interno
+                    $raw_val = (string)$sheet->getCell('J' . $row)->getFormattedValue();
                     
-                    if (is_numeric($cellVal)) {
-                        $valor_compra = floatval($cellVal);
-                    } else {
-                        $str_val = trim((string)$cellVal);
-                        $str_val = str_ireplace(['$', ' ', 'COP'], '', $str_val);
-                        
-                        if (preg_match('/,\d{1,2}$/', $str_val)) {
-                            $str_val = str_replace('.', '', $str_val);
-                            $str_val = str_replace(',', '.', $str_val);
-                        } elseif (preg_match('/\.\d{1,2}$/', $str_val)) {
-                            $str_val = str_replace(',', '', $str_val);
-                        } else {
-                            $str_val = str_replace(['.', ','], '', $str_val);
-                        }
-                        
-                        $str_val = preg_replace('/[^0-9.]/', '', $str_val);
-                        $valor_compra = empty($str_val) ? 0 : floatval($str_val);
+                    // Quitamos símbolos de moneda y espacios invisibles
+                    $raw_val = trim(str_ireplace(['$', 'COP', ' ', ' '], '', $raw_val));
+                    
+                    // Si termina en decimales (,00 o .00), los eliminamos
+                    if (preg_match('/[.,]\d{1,2}$/', $raw_val)) {
+                        $raw_val = preg_replace('/[.,]\d{1,2}$/', '', $raw_val);
                     }
+                    
+                    // Quitamos todos los puntos y comas de separadores de miles
+                    $raw_val = preg_replace('/[.,]/', '', $raw_val);
+                    
+                    // Aseguramos que solo queden números puros
+                    $raw_val = preg_replace('/[^0-9]/', '', $raw_val);
+                    $valor_compra = empty($raw_val) ? 0 : floatval($raw_val);
 
                     // ========================================================
                     // FECHAS (Corrección Zona Horaria Colombia -5)
