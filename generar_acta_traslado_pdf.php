@@ -68,6 +68,7 @@ $empresa = $usuario_recibe['empresa'] ?? 'N/A';
 $regional = $usuario_recibe['regional'] ?? 'N/A';
 
 $cc_entrega = $usuario_entrega['usuario'] ?? 'N/A';
+$nombre_entrega = $usuario_entrega['nombre_completo'] ?? '';
 
 // Variables en blanco para firma de autorización
 $autorizado_por = "";
