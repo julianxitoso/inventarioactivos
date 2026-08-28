@@ -299,7 +299,7 @@ $pdf->Line(15, $pdf->GetY(), 200, $pdf->GetY());
 $pdf->SetDrawColor(0, 0, 0);
 
 // Dejamos el nombre vacío pero ponemos la cédula original para que quien entrega firme
-renderFirmaVertical($pdf, 'Nombre de quien entrega:', '', $cc_entrega); 
+renderFirmaVertical($pdf, 'Nombre de quien entrega:', $nombre_entrega, $cc_entrega);
 
 $pdf->SetDrawColor(200, 200, 200);
 $pdf->Line(15, $pdf->GetY(), 200, $pdf->GetY());
