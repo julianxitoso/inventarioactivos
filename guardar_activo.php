@@ -179,7 +179,7 @@ if (is_array($activos) && count($activos) > 0) {
         $red = $activo['red'] ?? null;
 
         // Ejecutar Insert Activo (Ahora con una 's' más en el bind_param por la tenencia)
-        $stmt_activo->bind_param("issssssdssisssssssssii", 
+        $stmt_activo->bind_param("isssssdssisissssssssi", 
             $id_usuario_responsable, 
             $tipo, 
             $marca, 
