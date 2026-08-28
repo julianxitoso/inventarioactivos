@@ -260,7 +260,7 @@ $pdf->SetDrawColor(200, 200, 200);
 $pdf->Line(15, $pdf->GetY(), 200, $pdf->GetY());
 $pdf->SetDrawColor(0, 0, 0);
 
-renderFirmaVertical($pdf, 'Nombre de quien recibe (Auditor / Almacén):', '', '');
+renderFirmaVertical($pdf, 'Nombre de quien recibe:', '', '');
 
 $pdf->Ln(2); // Padding final
 
