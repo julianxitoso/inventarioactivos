@@ -16,7 +16,6 @@ if (!isset($_GET['id_historial']) || !filter_var($_GET['id_historial'], FILTER_V
 }
 $id_historial = (int)$_GET['id_historial'];
 
-// Obtener datos del evento y del activo (Actualizada para traer el cargo y que coincida el encabezado)
 $sql = "SELECT 
             h.fecha_evento, h.datos_nuevos, u_log.nombre_completo as nombre_quien_entrega, 
             a.*, 
@@ -32,33 +31,34 @@ $sql = "SELECT
         LEFT JOIN usuarios u_log ON h.usuario_responsable = u_log.usuario
         LEFT JOIN usuarios u_recibe ON a.id_usuario_responsable = u_recibe.id
         LEFT JOIN cargos c ON u_recibe.id_cargo = c.id_cargo
-        WHERE h.id_historial = ? AND h.tipo_evento = 'CREACIÓN'";
+        WHERE h.id_historial = ? AND h.tipo_evento IN ('CREACIÓN', 'ASIGNACIÓN INICIAL')";
 
 $stmt = $conexion->prepare($sql);
 if(!$stmt) die("Error al preparar la consulta: ".$conexion->error);
 $stmt->bind_param("i", $id_historial);
 $stmt->execute();
 $result = $stmt->get_result();
-$hist = $result->fetch_assoc(); // Usamos $hist para mantener la compatibilidad con el diseño
+$hist = $result->fetch_assoc();
 $stmt->close();
 
-if (!$hist) { die("No se encontraron datos para el evento de creación con ID: " . htmlspecialchars($id_historial)); }
+if (!$hist) { die("No se encontraron datos para el evento de creación/asignación con ID: " . htmlspecialchars($id_historial)); }
 
 $nombre_recibe = $hist['nombre_receptor'] ?? 'N/A';
 $cedula_recibe = $hist['cedula_receptor'] ?? 'N/A';
 $empresa = $hist['empresa_receptor'] ?? 'N/A';
 $regional = $hist['regional_receptor'] ?? 'N/A';
-$autorizado_por = "MARY LUZ TRUJILLO";
-$autorizado_cc = "25286841";
 
-// Función auxiliar para dibujar los bloques de firma verticales (Idéntica a la de Baja)
+// Variables en blanco como solicitaste
+$autorizado_por = "";
+$autorizado_cc = "";
+
 function renderFirmaVertical($pdf, $titulo, $nombre, $cc) {
     $pdf->Ln(4);
     $pdf->SetX(15);
     $pdf->SetFont('Arial', 'B', 10);
     $pdf->Cell(170, 6, $pdf->to_iso($titulo), 0, 1, 'L');
 
-    $pdf->Ln(10); // Espacio para que la persona firme a mano
+    $pdf->Ln(10); 
 
     $pdf->SetX(15);
     $pdf->SetFont('Arial', 'B', 9);
@@ -98,20 +98,17 @@ $pdf->SetMargins(10, 10, 10);
 $pdf->SetAutoPageBreak(true, 10);
 $pdf->AddPage();
 
-$w_total = 195; // Ancho total útil de la página
+$w_total = 195; 
 $x_start = 10;
 $y_start = 10;
 
-// ==========================================
-// BLOQUE 1: CABECERA (ENMARCADA)
-// ==========================================
 $pdf->SetLineWidth(0.5);
 $pdf->Rect($x_start, $y_start, $w_total, 30);
 $pdf->SetLineWidth(0.2); 
 
 $pdf->Image('imagenes/logo.png', $x_start + 2, $y_start + 4, 38);
-$pdf->Line($x_start + 42, $y_start, $x_start + 42, $y_start + 30); // Divisor Logo
-$pdf->Line($x_start + 160, $y_start, $x_start + 160, $y_start + 30); // Divisor Derecho
+$pdf->Line($x_start + 42, $y_start, $x_start + 42, $y_start + 30); 
+$pdf->Line($x_start + 160, $y_start, $x_start + 160, $y_start + 30); 
 
 $pdf->SetFont('Arial', 'B', 8); 
 $pdf->SetXY($x_start + 42, $y_start + 2);
@@ -132,9 +129,6 @@ $pdf->Cell(118, 5, $pdf->to_iso('DAR DE BAJA ACTIVOS FIJOS'), 0, 1, 'C');
 
 $pdf->SetY($y_start + 30);
 
-// ==========================================
-// BLOQUE 2: DATOS DEL DOCUMENTO
-// ==========================================
 $pdf->SetFont('Arial', 'B', 8);
 
 $y_current = $pdf->GetY();
@@ -153,17 +147,12 @@ $pdf->Line($x_start + 85, $y_current, $x_start + 85, $y_current + 7);
 $pdf->SetX($x_start + 86);
 $pdf->Cell(109, 7, 'Punto de Venta: ' . $pdf->to_iso($empresa), 0, 1, 'L');
 
-// ==========================================
-// BLOQUE 3: TEXTO LEGAL
-// ==========================================
+
 $texto_legal = "Para formalizar la solicitud, en la presente acta quedaran consignados los equipos y muebles que están bajo su responsabilidad, buen uso y cuidado. Los daños que se generen le serán descontados automáticamente.\n\nCuando haya terminación del contrato laboral o retiro voluntario, usted debe hacer entrega de los activos fijos aquí estipulados al líder de zona o en su defecto al nuevo encargado del puesto, ya que este será un requisito indispensable para la firma de paz y salvo por parte de la empresa.";
 
 $pdf->SetFont('Arial', '', 9);
 $pdf->MultiCell($w_total, 5, $pdf->to_iso($texto_legal), 1, 'J');
 
-// ==========================================
-// BLOQUE 4: TABLA DEL ACTIVO
-// ==========================================
 $pdf->SetFont('Arial','B',7);
 $y_table = $pdf->GetY();
 
@@ -208,9 +197,7 @@ $pdf->Cell($w_est_col, 8, $m, 1, 0, 'C');
 $pdf->SetFont('Arial','',7);
 $pdf->Cell($w_obs, 8, $pdf->to_iso(substr($hist['detalles'] ?? 'Ninguna.', 0, 30)), 1, 1, 'C');
 
-// ==========================================
-// BLOQUE 5: OBSERVACIONES GENERALES
-// ==========================================
+
 $pdf->SetFont('Arial', 'B', 7);
 $pdf->SetFillColor(230, 230, 230);
 $pdf->Cell($w_total, 6, 'OBSERVACIONES GENERALES:', 1, 1, 'L', true);
@@ -219,13 +206,10 @@ $y_obs_text = $pdf->GetY();
 $pdf->Rect($x_start, $y_obs_text, $w_total, 20); 
 $pdf->SetFont('Arial', '', 9);
 $pdf->SetXY($x_start + 2, $y_obs_text + 2);
-// Como es un acta de entrega nueva, imprimimos los detalles del equipo si los hay, o dejamos en blanco
 $pdf->MultiCell($w_total - 4, 5, $pdf->to_iso($hist['detalles'] ?? ''), 0, 'L');
 $pdf->SetY($y_obs_text + 20); 
 
-// =========================================================
-// INICIO DEL MARCO INFERIOR CONTINUO (CHECKBOX + FIRMAS)
-// =========================================================
+
 $y_start_footer = $pdf->GetY(); 
 
 $pdf->Ln(8);
@@ -235,26 +219,22 @@ $pdf->Cell(70, 6, 'Certifico que el equipo detallado fue por:', 0, 0, 'L');
 
 $pdf->SetFont('Arial', '', 9);
 
-// Ingreso (Marcada porque es acta de entrega/creación)
+
 $pdf->SetFont('Arial', 'B', 10);
 $pdf->Rect($pdf->GetX() + 10, $pdf->GetY() + 1, 4, 4);
 $pdf->Text($pdf->GetX() + 10.8, $pdf->GetY() + 4.5, 'X'); 
 $pdf->SetFont('Arial', '', 9);
 $pdf->Cell(30, 6, 'Ingreso', 0, 0, 'R');
 
-// Traslado
+
 $pdf->Rect($pdf->GetX() + 10, $pdf->GetY() + 1, 4, 4);
 $pdf->Cell(30, 6, 'Traslado', 0, 0, 'R');
 
-// Baja
 $pdf->Rect($pdf->GetX() + 10, $pdf->GetY() + 1, 4, 4);
 $pdf->Cell(25, 6, 'Baja', 0, 1, 'R');
 
 $pdf->Ln(8);
 
-// ==========================================
-// FIRMAS VERTICALES ESTILIZADAS
-// ==========================================
 
 $pdf->SetDrawColor(200, 200, 200);
 $pdf->Line($x_start, $pdf->GetY(), $x_start + $w_total, $pdf->GetY());
@@ -266,21 +246,20 @@ $pdf->SetDrawColor(200, 200, 200);
 $pdf->Line(15, $pdf->GetY(), 200, $pdf->GetY());
 $pdf->SetDrawColor(0, 0, 0);
 
-// Se deja el espacio en blanco a petición para llenarlo a mano
 renderFirmaVertical($pdf, 'Nombre de quien entrega:', '', ''); 
 
 $pdf->SetDrawColor(200, 200, 200);
 $pdf->Line(15, $pdf->GetY(), 200, $pdf->GetY());
 $pdf->SetDrawColor(0, 0, 0);
 
-renderFirmaVertical($pdf, 'Nombre de quien recibe (Responsable Actual):', $nombre_recibe, $cedula_recibe);
+// Etiqueta limpia
+renderFirmaVertical($pdf, 'Nombre de quien recibe:', $nombre_recibe, $cedula_recibe);
 
 $pdf->Ln(2);
 
-// CERRAR EL CUADRO GIGANTE
+
 $y_end_footer = $pdf->GetY();
 $pdf->Rect($x_start, $y_start_footer, $w_total, $y_end_footer - $y_start_footer);
-
 
 $pdf->Output('I', 'Acta_Entrega_S' . ($hist['serie'] ?? 'N-A') . '.pdf');
 exit;

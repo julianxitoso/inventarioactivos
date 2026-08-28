@@ -1,9 +1,7 @@
 <?php
 session_start();
-// auth_check.php DEBE estar primero
 require_once 'backend/auth_check.php'; 
 
-// Verificar que esté logueado:
 if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
     header("location: login.php?error=sesion_requerida_historial");
     exit;
@@ -12,8 +10,8 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 require_once 'backend/db.php';
 require_once 'backend/historial_helper.php'; 
 
-// Definiciones de constantes de historial
 if (!defined('HISTORIAL_TIPO_CREACION')) define('HISTORIAL_TIPO_CREACION', 'CREACIÓN');
+if (!defined('HISTORIAL_TIPO_ASIGNACION_INICIAL')) define('HISTORIAL_TIPO_ASIGNACION_INICIAL', 'ASIGNACIÓN INICIAL');
 if (!defined('HISTORIAL_TIPO_ACTUALIZACION')) define('HISTORIAL_TIPO_ACTUALIZACION', 'ACTUALIZACIÓN');
 if (!defined('HISTORIAL_TIPO_TRASLADO')) define('HISTORIAL_TIPO_TRASLADO', 'TRASLADO');
 if (!defined('HISTORIAL_TIPO_BAJA')) define('HISTORIAL_TIPO_BAJA', 'BAJA');
@@ -23,7 +21,8 @@ if (!defined('HISTORIAL_TIPO_ELIMINACION_FISICA')) define('HISTORIAL_TIPO_ELIMIN
 
 function getHistorialEventoBadgeClass($tipo_evento) {
     switch ($tipo_evento) {
-        case HISTORIAL_TIPO_CREACION: return 'badge bg-success badge-custom';
+        case HISTORIAL_TIPO_CREACION: 
+        case HISTORIAL_TIPO_ASIGNACION_INICIAL: return 'badge bg-success badge-custom';
         case HISTORIAL_TIPO_ACTUALIZACION: return 'badge bg-info text-dark badge-custom';
         case HISTORIAL_TIPO_TRASLADO: return 'badge bg-primary badge-custom';
         case HISTORIAL_TIPO_BAJA: return 'badge bg-warning text-dark badge-custom';
@@ -39,14 +38,14 @@ $rol_usuario_actual_sesion = $_SESSION['rol_usuario'] ?? 'Desconocido';
 $conexion_error_msg = null;
 if (isset($conn) && !isset($conexion)) { $conexion = $conn; }
 if (!isset($conexion) || !$conexion || (method_exists($conexion, 'connect_error') && $conexion->connect_error) ) {
-    $conexion_error_msg = "Error de conexión a la base de datos. No se pudo cargar la información.";
-    error_log("Fallo CRÍTICO de conexión a BD en historial.php: " . ($conexion->connect_error ?? 'Error desconocido'));
+    $conexion_error_msg = "Error de conexión a la base de datos.";
+    error_log("Fallo CRÍTICO de conexión a BD en historial.php");
 } else {
     $conexion->set_charset("utf8mb4");
 }
 
 if (!isset($_GET['id_activo']) || !filter_var($_GET['id_activo'], FILTER_VALIDATE_INT) || $_GET['id_activo'] <= 0) {
-    $_SESSION['error_global'] = "ID de activo no válido o no proporcionado para ver el historial.";
+    $_SESSION['error_global'] = "ID de activo no válido.";
     header("Location: buscar.php"); 
     exit;
 }
@@ -63,14 +62,10 @@ if (!$conexion_error_msg) {
                             u.usuario AS cedula_responsable, 
                             u.regional AS regional_responsable, 
                             u.empresa AS empresa_responsable
-                        FROM 
-                            activos_tecnologicos a
-                        LEFT JOIN 
-                            tipos_activo ta ON a.id_tipo_activo = ta.id_tipo_activo
-                        LEFT JOIN 
-                            usuarios u ON a.id_usuario_responsable = u.id
-                        WHERE 
-                            a.id = ?";
+                        FROM activos_tecnologicos a
+                        LEFT JOIN tipos_activo ta ON a.id_tipo_activo = ta.id_tipo_activo
+                        LEFT JOIN usuarios u ON a.id_usuario_responsable = u.id
+                        WHERE a.id = ?";
     $stmt_activo = $conexion->prepare($sql_info_activo);
     if ($stmt_activo) {
         $stmt_activo->bind_param('i', $id_activo_historial);
@@ -78,20 +73,10 @@ if (!$conexion_error_msg) {
         $result_activo = $stmt_activo->get_result();
         $activo_info = $result_activo->fetch_assoc();
         $stmt_activo->close();
-    } else {
-        error_log("Error al preparar consulta de información del activo en historial.php: " . $conexion->error);
-        $conexion_error_msg = ($conexion_error_msg ? $conexion_error_msg . "<br>" : "") . "Error al cargar información detallada del activo.";
     }
 }
 
-if (!$activo_info && !$conexion_error_msg) {
-    $_SESSION['error_global'] = "Activo con ID " . htmlspecialchars($id_activo_historial) . " no encontrado o no accesible.";
-    header("Location: buscar.php"); 
-    exit;
-}
-
 $historial_items = [];
-$error_historial_carga = null;
 if (!$conexion_error_msg && $activo_info) {
     $stmt_hist = $conexion->prepare(
         "SELECT id_historial, fecha_evento, tipo_evento, descripcion_evento, usuario_responsable, datos_anteriores, datos_nuevos
@@ -106,9 +91,6 @@ if (!$conexion_error_msg && $activo_info) {
             $historial_items[] = $row_hist;
         }
         $stmt_hist->close();
-    } else {
-        error_log("HISTORIAL: Error al preparar consulta para ver historial de activo ID $id_activo_historial: " . $conexion->error);
-        $error_historial_carga = "No se pudo cargar el historial completo debido a un error del sistema.";
     }
 }
 
@@ -192,14 +174,13 @@ if (isset($conexion) && $conexion && !$conexion_error_msg) {
                         <p class="mb-1"><?= nl2br(htmlspecialchars($item_hist['descripcion_evento'])) ?></p>
                         
                         <?php
-                        // Comprobar si el evento es Creación, Traslado o BAJA para mostrar el botón
-                        if ($item_hist['tipo_evento'] === HISTORIAL_TIPO_CREACION || $item_hist['tipo_evento'] === HISTORIAL_TIPO_TRASLADO || $item_hist['tipo_evento'] === HISTORIAL_TIPO_BAJA):
+                        if (in_array($item_hist['tipo_evento'], [HISTORIAL_TIPO_CREACION, HISTORIAL_TIPO_ASIGNACION_INICIAL, HISTORIAL_TIPO_TRASLADO, HISTORIAL_TIPO_BAJA])):
                             $url_acta = '';
                             $texto_acta = '';
                             $icono_acta = '';
                             $clase_btn = '';
 
-                            if ($item_hist['tipo_evento'] === HISTORIAL_TIPO_CREACION) {
+                            if (in_array($item_hist['tipo_evento'], [HISTORIAL_TIPO_CREACION, HISTORIAL_TIPO_ASIGNACION_INICIAL])) {
                                 $url_acta = 'generar_acta_entrega_pdf.php?id_historial=' . $item_hist['id_historial'];
                                 $texto_acta = 'Generar Acta de Entrega';
                                 $icono_acta = 'bi-file-earmark-check';
@@ -213,7 +194,7 @@ if (isset($conexion) && $conexion && !$conexion_error_msg) {
                                 $url_acta = 'generar_acta_baja_pdf.php?id_historial=' . $item_hist['id_historial'];
                                 $texto_acta = 'Generar Acta de Baja';
                                 $icono_acta = 'bi-file-earmark-x-fill';
-                                $clase_btn = 'btn-danger'; // Botón rojo sólido para destacar
+                                $clase_btn = 'btn-danger'; 
                             }
                         ?>
                             <div class="mt-2">
