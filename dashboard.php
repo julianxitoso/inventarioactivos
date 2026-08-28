@@ -552,7 +552,7 @@ $init_data = json_encode($payload, JSON_UNESCAPED_UNICODE);
         <div class="col-lg-4">
             <div class="chart-box h-100">
                 <h5 class="chart-title"><i class="bi bi-pie-chart"></i> Inversión ($) por Categoría</h5>
-                <div class="chart-wrapper" style="height:250px"><canvas id="chartCatVal"></canvas></div>
+                <div class="chart-wrapper" style="height:280px"><canvas id="chartCatVal"></canvas></div>
             </div>
         </div>
     </div>
@@ -624,7 +624,7 @@ function initCharts() {
     
     charts.est = newChart('chartEstado', 'doughnut', db.charts.estado.l, db.charts.estado.d, {cutout: '65%', customColors: ['#1cc88a', '#f6c23e', '#e74a3b']});
     charts.catc = newChart('chartCatCant', 'bar', db.charts.cat_cant.l, db.charts.cat_cant.d, {indexAxis: 'y', targetFilter:'#selCategoria', color: '#4361ee'});
-    charts.catv = newChart('chartCatVal', 'pie', db.charts.cat_val.l, db.charts.cat_val.d, {targetFilter:'#selCategoria'});
+    charts.catv = newChart('chartCatVal', 'bar', db.charts.cat_val.l, db.charts.cat_val.d, {indexAxis: 'y', targetFilter:'#selCategoria', color: '#1cc88a', format: 'currency'});
     
     charts.edad = newChart('chartEdad', 'bar', db.charts.edad.l, db.charts.edad.d, {color: '#f6c23e'});
     charts.marcas = newChart('chartMarcas', 'bar', db.charts.marcas.l, db.charts.marcas.d, {indexAxis: 'y', color: '#fd7e14'});
@@ -699,9 +699,13 @@ function newChart(id, type, labels, data, opts={}) {
                 legend: { display: (type === 'doughnut' || type === 'pie'), position: 'bottom', labels:{boxWidth:10, font:{size:10}} }
             },
             scales: (type === 'bar' || type === 'line') ? {
-                x: { grid: {display: false} },
+                x: { 
+                grid: {display: false},
+            ticks: opts.format === 'currency' ? { callback: (val) => '$' + new Intl.NumberFormat('es-CO').format(val) } : {}
+    
+            },
                 y: { grid: {color: '#f1f5f9'}, beginAtZero: true }
-            } : {},
+            } : {},     
             onClick: (e, el) => {
                 if(!el.length || !opts.targetFilter) return;
                 const idx = el[0].index;
