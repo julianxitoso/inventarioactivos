@@ -57,11 +57,12 @@ if ($row_user = $res_user->fetch_assoc()) {
     $id_usuario_responsable = $row_user['id'];
     
     // Actualizamos Cargo, Empresa, Regional (Texto + ID) y Centro de Costo (ID)
+    // Nota: Solo actualizamos aplicaciones si el campo no viene vacío (para no borrar historial si estaba bloqueado)
     $sql_update_user = "UPDATE usuarios SET 
                         nombre_completo = ?, 
                         empresa = ?, 
-                        regional = ?,       
-                        id_centro_costo = ? 
+                        regional = ?,       -- Campo texto legacy
+                        id_centro_costo = ? -- Campo nuevo ID
                         WHERE id = ?";
                         
     $stmt_update = $conexion->prepare($sql_update_user);
@@ -98,8 +99,8 @@ if ($row_user = $res_user->fetch_assoc()) {
     $stmt_check_cargo->close();
 
     // Insertar Usuario
-    $pass_default = password_hash($cedula_responsable, PASSWORD_DEFAULT); 
-    $rol_defecto = 'registrador'; 
+    $pass_default = password_hash($cedula_responsable, PASSWORD_DEFAULT); // Clave por defecto = cédula
+    $rol_defecto = 'registrador'; // Rol base
     
     $sql_insert_user = "INSERT INTO usuarios (usuario, clave, nombre_completo, id_cargo, empresa, regional, rol, aplicaciones_usadas, id_centro_costo) 
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
@@ -124,14 +125,12 @@ $errores = [];
 if (is_array($activos) && count($activos) > 0) {
     
     // Preparamos la consulta de inserción de activos (optimizada)
-    // MODIFICACIÓN: Agregado el campo "tenencia" al INSERT
     $sql_activo = "INSERT INTO activos_tecnologicos (
         id_usuario_responsable, 
         id_tipo_activo, 
         marca, 
         serie, 
         estado, 
-        tenencia, 
         valor_aproximado, 
         fecha_compra, 
         Codigo_Inv, 
@@ -139,8 +138,8 @@ if (is_array($activos) && count($activos) > 0) {
         detalles, 
         satisfaccion_rating,
         procesador, ram, disco_duro, sistema_operativo, offimatica, antivirus, tipo_equipo, red,
-        id_centro_costo 
-    ) VALUES (?, (SELECT id_tipo_activo FROM tipos_activo WHERE nombre_tipo_activo = ? LIMIT 1), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        id_centro_costo -- Importante: Guardar la ubicación en el activo también
+    ) VALUES (?, (SELECT id_tipo_activo FROM tipos_activo WHERE nombre_tipo_activo = ? LIMIT 1), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
     $stmt_activo = $conexion->prepare($sql_activo);
 
@@ -148,7 +147,7 @@ if (is_array($activos) && count($activos) > 0) {
     $sql_historial = "INSERT INTO historial_activos (id_activo, tipo_evento, descripcion_evento, usuario_responsable, fecha_evento) VALUES (?, 'ASIGNACIÓN INICIAL', ?, ?, NOW())";
     $stmt_historial = $conexion->prepare($sql_historial);
 
-    foreach ($activos as $index => $activo) {
+foreach ($activos as $index => $activo) {
         // Validaciones básicas
         $tipo = $activo['tipo_activo'] ?? '';
         if (isset($activo['tipo_impresora']) && !empty($activo['tipo_impresora'])) { 
@@ -158,10 +157,10 @@ if (is_array($activos) && count($activos) > 0) {
         $marca = $activo['marca'];
         $serie = $activo['serie'];
         $estado = $activo['estado'];
-        $tenencia = $activo['tenencia']; // NUEVO: Atrapamos la tenencia enviada por el formulario
         $valor = (float)$activo['valor_aproximado'];
         $fecha = $activo['fecha_compra'];
         
+        // === SOLUCIÓN 2: Convertir cadena vacía en NULL real ===
         $codigo = !empty($activo['codigo_inv']) ? trim($activo['codigo_inv']) : null;
         
         $vida = (int)$activo['vida_util'];
@@ -178,17 +177,16 @@ if (is_array($activos) && count($activos) > 0) {
         $tipo_eq = (!empty($activo['tipo_impresora'])) ? $activo['tipo_impresora'] : ($activo['tipo_equipo'] ?? null);
         $red = $activo['red'] ?? null;
 
-        // Ejecutar Insert Activo (Ahora con una 's' más en el bind_param por la tenencia)
-        $stmt_activo->bind_param("issssssdssisssssssssii", 
+        // Ejecutar Insert Activo
+        $stmt_activo->bind_param("issssdssisssssssssii", 
             $id_usuario_responsable, 
             $tipo, 
             $marca, 
             $serie, 
             $estado, 
-            $tenencia, // NUEVO
             $valor, 
             $fecha, 
-            $codigo, 
+            $codigo, // Si es null, mysqli lo enviará correctamente a la BD
             $vida, 
             $detalles, 
             $rating,

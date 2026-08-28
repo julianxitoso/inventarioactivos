@@ -4,7 +4,6 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 // =================================================================================
 // ARCHIVO: index.php (Formulario Principal de Registro de Activos)
-// MODIFICACIÓN: Agregado campo TENENCIA (Propio, Renting, Comodato) obligatorio.
 // =================================================================================
 
 // 1. AUTENTICACIÓN Y SEGURIDAD
@@ -102,7 +101,6 @@ $empresas_disponibles = ['Arpesod', 'Finansueños'];
 $opciones_tipo_equipo = ['Portátil', 'Mesa', 'Todo en 1'];
 $opciones_red = ['Cableada', 'Inalámbrica', 'Ambas'];
 $opciones_estado_general = ['Bueno', 'Regular', 'Malo'];
-$opciones_tenencia = ['PROPIO', 'RENTING', 'COMODATO']; // NUEVO ARREGLO
 $opciones_so = ['Windows 10', 'Windows 11', 'Linux', 'MacOS'];
 $opciones_offimatica = ['Office 365', 'Office Home And Business', 'Office 2021', 'Office 2019', 'Office 2016', 'LibreOffice', 'Google Workspace'];
 $opciones_antivirus = ['Microsoft Defender', 'Bitdefender', 'ESET NOD32 Antivirus', 'McAfee Total Protection', 'Kaspersky'];
@@ -267,8 +265,7 @@ unset($_SESSION['error_global']);
                          </button>
                      </div>
                  </div>
-                 <div class="col-md-2 mb-3"><label for="estado" class="form-label">Estado <span class="text-danger">*</span></label><select class="form-select" id="estado" name="activo_estado" required><option value="Seleccione">Seleccione</option><?php foreach ($opciones_estado_general as $opcion): if($opcion !== 'Nuevo' && $opcion !== 'Dado de Baja') { ?><option value="<?= htmlspecialchars($opcion) ?>"><?= htmlspecialchars($opcion) ?></option><?php } endforeach; ?></select></div>
-                 <div class="col-md-2 mb-3"><label for="tenencia" class="form-label">Tenencia <span class="text-danger">*</span></label><select class="form-select" id="tenencia" name="activo_tenencia" required><option value="">Seleccione...</option><?php foreach ($opciones_tenencia as $opcion): ?><option value="<?= htmlspecialchars($opcion) ?>"><?= htmlspecialchars($opcion) ?></option><?php endforeach; ?></select></div>
+                 <div class="col-md-4 mb-3"><label for="estado" class="form-label">Estado del Activo <span class="text-danger">*</span></label><select class="form-select" id="estado" name="activo_estado" required><option value="Seleccione">Seleccione</option><?php foreach ($opciones_estado_general as $opcion): if($opcion !== 'Nuevo' && $opcion !== 'Dado de Baja') { ?><option value="<?= htmlspecialchars($opcion) ?>"><?= htmlspecialchars($opcion) ?></option><?php } endforeach; ?></select></div>
              </div>
 
              <div class="row">
@@ -329,9 +326,9 @@ unset($_SESSION['error_global']);
                             <th>Tipo</th>
                             <th>Marca</th>
                             <th>Serie</th>
-                            <th>Tenencia</th>
                             <th>F. Compra</th>
                             <th>Valor</th>
+                            <th>Vida Útil</th>
                             <th>Acción</th>
                         </tr>
                     </thead>
@@ -417,6 +414,7 @@ unset($_SESSION['error_global']);
         return texto.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
     }
 
+    // Función inteligente para seleccionar en Selects (Texto o Valor)
     function seleccionarEnSelect(select, valorBuscado) {
         if (!valorBuscado) return false;
         const buscado = normalizarTexto(valorBuscado.toString());
@@ -425,6 +423,7 @@ unset($_SESSION['error_global']);
             const optVal = normalizarTexto(select.options[i].value);
             const optText = normalizarTexto(select.options[i].text);
             
+            // Coincidencia exacta de valor o texto parcial
             if (optVal === buscado || optText.includes(buscado) || buscado.includes(optText)) {
                 select.selectedIndex = i;
                 return true;
@@ -434,6 +433,7 @@ unset($_SESSION['error_global']);
     }
 
     function alternarBloqueoCamposResponsable(bloquear) {
+        // Solo bloqueamos si no es readonly por defecto (nombre/cargo)
         if(!inputNombre.readOnly) inputNombre.disabled = bloquear;
         if(!inputCargo.readOnly) inputCargo.disabled = bloquear;
         selectEmpresa.disabled = bloquear;
@@ -447,6 +447,7 @@ unset($_SESSION['error_global']);
     function buscarDatos(val) {
         if(!val) return;
         
+        // 1. DESBLOQUEAR TODO PRIMERO (Para que JS pueda escribir)
         alternarBloqueoCamposResponsable(false);
         
         fetch(`buscar_datos_usuario.php?cedula=${val}`)
@@ -456,10 +457,13 @@ unset($_SESSION['error_global']);
                 inputNombre.value = data.nombre_completo || '';
                 inputCargo.value = data.cargo || '';
                 
+                // Seleccionar Empresa
                 seleccionarEnSelect(selectEmpresa, data.empresa_texto);
 
+                // Seleccionar Regional (Prioridad: ID > Texto)
                 let regionalSet = false;
                 if (data.id_regional) {
+                    // Intento por ID directo
                     for(let i=0; i<selectRegional.options.length; i++) {
                         if(selectRegional.options[i].value == data.id_regional) {
                             selectRegional.selectedIndex = i;
@@ -472,28 +476,33 @@ unset($_SESSION['error_global']);
                     regionalSet = seleccionarEnSelect(selectRegional, data.regional_texto);
                 }
 
+                // Cargar Centros de Costo si hay regional
                 if (selectRegional.value) {
                     cargarCentrosCosto(selectRegional.value, data.id_centro_costo);
                 } else {
                     selectCentroCosto.innerHTML = '<option value="">Seleccione Regional...</option>';
                 }
 
+                // Apps
                 if (data.aplicaciones_usadas && data.aplicaciones_usadas.trim() !== '') {
                     divInfoApps.innerHTML = `📝 <strong>Info:</strong> Apps ya registradas: <b>${data.aplicaciones_usadas}</b>.`;
                     divInfoApps.style.display = 'block';
                 }
             } else {
+                // Si no se encuentra, dejar campos libres para escribir (si es admin)
                 if(!esRegistrador) {
+                    // Limpiar visualmente pero dejar habilitado
                     selectCentroCosto.innerHTML = '<option value="">Primero seleccione Regional</option>';
                 }
             }
         })
         .finally(() => {
+            // Si es Registrador, BLOQUEAMOS todo de nuevo al final
             if (esRegistrador) {
                 setTimeout(() => {
                     alternarBloqueoCamposResponsable(true);
-                    inputCedula.readOnly = true; 
-                }, 500); 
+                    inputCedula.readOnly = true; // Asegurar
+                }, 500); // Pequeño delay para asegurar que centros de costo cargó
             }
         })
         .catch(err => console.error('Error buscar usuario:', err));
@@ -505,6 +514,7 @@ unset($_SESSION['error_global']);
 
     function cargarCentrosCosto(idRegional, idCentroPreseleccionado) {
         selectCentroCosto.innerHTML = '<option value="">Cargando...</option>';
+        // Mantener habilitado mientras carga
         selectCentroCosto.disabled = false;
         
         fetch(`backend/obtener_datos_dinamicos.php?accion=obtener_centros_costo_por_regional&id_regional=${idRegional}`)
@@ -533,6 +543,7 @@ unset($_SESSION['error_global']);
             });
     }
 
+    // Manual change regional
     selectRegional.addEventListener('change', function() {
         cargarCentrosCosto(this.value);
     });
@@ -589,6 +600,7 @@ unset($_SESSION['error_global']);
     // 3. FLUJO PRINCIPAL
     // =========================================================
     btnConfirmarResponsable.addEventListener('click', function() {
+        // Validar campos obligatorios
         if(!inputCedula.value || !selectRegional.value || !selectEmpresa.value || !selectCentroCosto.value) {
             mostrarInfoModal('Faltan Datos', 'Por favor complete todos los datos del responsable (Regional, Centro de Costo, Empresa).');
             return;
@@ -596,10 +608,12 @@ unset($_SESSION['error_global']);
         
         responsableConfirmado = true;
         
+        // Bloqueo visual
         seccionResponsable.style.opacity = '0.6';
         alternarBloqueoCamposResponsable(true);
         inputCedula.readOnly = true; 
         
+        // Cambio de Botones
         this.style.display = 'none';
         btnEditarResponsable.style.display = 'inline-block';
         seccionAgregarActivo.style.display = 'block';
@@ -613,11 +627,13 @@ unset($_SESSION['error_global']);
         responsableConfirmado = false;
         seccionResponsable.style.opacity = '1';
         
+        // Si es Admin, desbloqueamos todo. Si es Registrador, NO desbloqueamos lo precargado.
         if (!esRegistrador) {
             alternarBloqueoCamposResponsable(false);
             inputCedula.readOnly = false;
             inputCedula.disabled = false;
         } else {
+            // El registrador no puede cambiar sus datos base, solo confirmar
             alert("Como Registrador, no puedes modificar tus datos básicos.");
             return; 
         }
@@ -634,8 +650,8 @@ unset($_SESSION['error_global']);
             mostrarInfoModal('Alto', 'Confirme primero el responsable.');
             return;
         }
-        if(!selectTipoActivo.value || !document.getElementById('marca').value || !document.getElementById('serie').value || !document.getElementById('tenencia').value) {
-            mostrarInfoModal('Faltan Datos', 'Complete Categoría, Tipo, Marca, Serie y Tenencia.');
+        if(!selectTipoActivo.value || !document.getElementById('marca').value || !document.getElementById('serie').value) {
+            mostrarInfoModal('Faltan Datos', 'Complete Categoría, Tipo, Marca y Serie.');
             return;
         }
         const rating = document.querySelector('input[name="activo_satisfaccion_rating"]:checked');
@@ -649,7 +665,6 @@ unset($_SESSION['error_global']);
             marca: document.getElementById('marca').value.trim(),
             serie: document.getElementById('serie').value.trim(),
             estado: document.getElementById('estado').value,
-            tenencia: document.getElementById('tenencia').value, // NUEVO CAMPO CAPTURADO
             valor_aproximado: document.getElementById('valor_aproximado').value || 0,
             codigo_inv: document.getElementById('codigo_inv').value.trim(),
             fecha_compra: document.getElementById('fecha_compra').value,
@@ -674,6 +689,7 @@ unset($_SESSION['error_global']);
     btnGuardarTodo.addEventListener('click', function() {
         if(activosParaGuardar.length === 0) return;
         
+        // Desbloquear para enviar POST
         document.querySelectorAll('input, select').forEach(el => el.disabled = false);
         
         const form = document.getElementById('formRegistrarLoteActivos');
@@ -708,10 +724,9 @@ unset($_SESSION['error_global']);
             fila.insertCell().textContent = `${activo.categoria_nombre} - ${tipoDisplay}`;
             fila.insertCell().textContent = activo.marca;
             fila.insertCell().textContent = activo.serie;
-            // Mostramos la tenencia en la tabla en lugar de la vida útil para mayor claridad visual
-            fila.insertCell().innerHTML = `<span class="badge bg-secondary">${activo.tenencia}</span>`;
             fila.insertCell().textContent = activo.fecha_compra;
             fila.insertCell().textContent = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(activo.valor_aproximado);
+            fila.insertCell().textContent = activo.vida_util + ' años';
             
             const celdaAccion = fila.insertCell();
             const btnEliminar = document.createElement('button');
@@ -733,7 +748,6 @@ unset($_SESSION['error_global']);
         document.getElementById('serie').value = '';
         document.getElementById('codigo_inv').value = '';
         document.getElementById('detalles').value = '';
-        document.getElementById('tenencia').value = ''; // Limpiamos la tenencia
         document.getElementById('activo_procesador').value = '';
         document.getElementById('activo_ram').value = '';
         document.getElementById('activo_disco_duro').value = '';
