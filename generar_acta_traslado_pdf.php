@@ -7,7 +7,6 @@ require_once 'backend/auth_check.php';
 require_once 'backend/db.php';
 require_once 'lib/fpdf/fpdf.php';
 
-// --- Bloque de conexión robusto ---
 if (isset($conn) && !isset($conexion)) { $conexion = $conn; }
 if (!isset($conexion) || !$conexion) { die("Error crítico de conexión a la base de datos."); }
 $conexion->set_charset("utf8mb4");
@@ -16,7 +15,7 @@ if (!isset($_GET['id_historial']) || !filter_var($_GET['id_historial'], FILTER_V
 $id_historial = (int)$_GET['id_historial'];
 
 // 1. Obtener el evento de historial para saber IDs de activo y cédulas
-$sql_evento = "SELECT id_activo, fecha_evento, datos_nuevos, datos_anteriores FROM historial_activos WHERE id_historial = ? AND tipo_evento = 'TRASLADO'";
+$sql_evento = "SELECT id_activo, fecha_evento, datos_nuevos, datos_anteriores, descripcion_evento FROM historial_activos WHERE id_historial = ? AND tipo_evento = 'TRASLADO'";
 $stmt_evento = $conexion->prepare($sql_evento);
 if(!$stmt_evento) die("Error al preparar la consulta del evento: ".$conexion->error);
 $stmt_evento->bind_param("i", $id_historial);
@@ -61,7 +60,7 @@ if ($cedula_recibe) {
     $stmt_recibe->close();
 }
 
-// Asignar variables para el PDF con datos frescos de la base de datos
+// Asignar variables para el PDF
 $nombre_recibe = $usuario_recibe['nombre_completo'] ?? 'N/A';
 $cc_recibe = $usuario_recibe['usuario'] ?? 'N/A';
 $cargo_recibe = $usuario_recibe['nombre_cargo'] ?? 'N/A';
@@ -70,126 +69,249 @@ $regional = $usuario_recibe['regional'] ?? 'N/A';
 
 $cc_entrega = $usuario_entrega['usuario'] ?? 'N/A';
 
-$autorizado_por = "MARY LUZ TRUJILLO";
-$autorizado_cc = "25286841";
+// Variables en blanco para firma de autorización
+$autorizado_por = "";
+$autorizado_cc = "";
 
-// --- Clase FPDF Personalizada (incluye todas las mejoras) ---
-class PDF_Acta extends FPDF {
-    protected $widths;
-    function to_iso($string) { return mb_convert_encoding($string, 'ISO-8859-1', 'UTF-8'); }
-    function Header() {
-        $this->Image('imagenes/logo.png', 10, 8, 45);
-        $this->SetXY(90, 10);
-        $this->SetFont('Arial', 'B', 9);
-        $this->MultiCell(110, 5, $this->to_iso("PROCESO EVALUACIÓN Y CONTROL\nPROCEDIMIENTO DE AUDITORIA INTERNA\nFINANSUEÑOS SAS\nNIT. 901723445"), 1, 'C');
-        $this->Ln(4);
-        $this->SetFont('Arial', 'B', 11);
-        $this->Cell(0, 7, $this->to_iso('SOLICITUD DE INGRESO, TRASLADO Y/O DAR DE BAJA ACTIVOS FIJOS'), 1, 1, 'C');
-    }
-    function Footer() { $this->SetY(-15); $this->SetFont('Arial','I',8); $this->Cell(0,10, 'Pagina '.$this->PageNo().'/{nb}',0,0,'C'); }
-    function Draw_Checkbox($label, $is_checked) {
-        $this->SetFont('Arial','',9);
-        $this->Cell(5, 5, '', 1, 0); 
-        if ($is_checked) {
-            $this->SetFont('Arial','B',9);
-            $x = $this->GetX(); $y = $this->GetY();
-            $this->Text($x - 4, $y + 3.5, 'X');
-            $this->SetFont('Arial','',9);
-        }
-        $this->Cell(25, 5, $this->to_iso($label), 0, 0);
-    }
-    function Draw_Signature_Block($label, $name, $cc = '') {
-        $this->SetFont('Arial','',9);
-        $this->Cell(90, 7, $this->to_iso($label . ': ' . $name), 'B', 0, 'L');
-        $this->Cell(5, 7, '', 0, 0);
-        $this->Cell(45, 7, 'Firma:', 'B', 0, 'L');
-        $this->Cell(5, 7, '', 0, 0);
-        $this->Cell(50, 7, 'Fecha:', 'B', 1, 'L');
-        if($cc) { $this->Cell(90, 7, 'CC: ' . $cc, 0, 1, 'L'); }
-    }
-    function SetWidths($w) { $this->widths = $w; }
-    function Row($data, $line_height = 5) {
-        $nb = 0;
-        for($i=0; $i<count($data); $i++) $nb = max($nb, $this->NbLines($this->widths[$i], $data[$i]));
-        $h = $line_height * $nb;
-        $this->CheckPageBreak($h);
-        for($i=0; $i<count($data); $i++) {
-            $w = $this->widths[$i]; $a = 'C';
-            $x = $this->GetX(); $y = $this->GetY();
-            $this->Rect($x, $y, $w, $h);
-            $this->SetXY($x, $y + 1);
-            $this->MultiCell($w, $line_height, $this->to_iso($data[$i]), 0, $a);
-            $this->SetXY($x + $w, $y);
-        }
-        $this->Ln($h);
-    }
-    function CheckPageBreak($h) { if($this->GetY()+$h>$this->PageBreakTrigger) $this->AddPage($this->CurOrientation); }
-    function NbLines($w, $txt) { $cw = &$this->CurrentFont['cw']; if($w==0) $w = $this->w-$this->rMargin-$this->x; $wmax = ($w-2*$this->cMargin)*1000/$this->FontSize; $s = str_replace("\r",'',$txt); $nb = strlen($s); if($nb>0 and $s[$nb-1]=="\n") $nb--; $sep = -1; $i = 0; $j = 0; $l = 0; $nl = 1; while($i<$nb) { $c = $s[$i]; if($c=="\n") { $i++; $sep = -1; $j = $i; $l = 0; $nl++; continue; } if($c==' ') $sep = $i; $l += $cw[$c]; if($l>$wmax) { if($sep==-1) { if($i==$j) $i++; } else $i = $sep+1; $sep = -1; $j = $i; $l = 0; $nl++; } else $i++; } return $nl; }
+
+// Función auxiliar para dibujar los bloques de firma verticales
+function renderFirmaVertical($pdf, $titulo, $nombre, $cc) {
+    $pdf->Ln(4);
+    $pdf->SetX(15);
+    $pdf->SetFont('Arial', 'B', 10);
+    $pdf->Cell(170, 6, $pdf->to_iso($titulo), 0, 1, 'L');
+
+    $pdf->Ln(10); 
+
+    $pdf->SetX(15);
+    $pdf->SetFont('Arial', 'B', 9);
+    $pdf->Cell(15, 5, 'Firma:', 0, 0, 'L');
+    $pdf->SetFont('Arial', '', 9);
+    $pdf->Cell(85, 5, '________________________________________________', 0, 0, 'L');
+
+    $pdf->SetFont('Arial', 'B', 9);
+    $pdf->Cell(15, 5, 'Fecha:', 0, 0, 'L');
+    $pdf->SetFont('Arial', '', 9);
+    $pdf->Cell(55, 5, '_________________________', 0, 1, 'L');
+
+    $pdf->Ln(2);
+
+    $pdf->SetX(15);
+    $pdf->SetFont('Arial', 'B', 9);
+    $pdf->Cell(15, 5, 'Nombre:', 0, 0, 'L');
+    $pdf->SetFont('Arial', '', 9);
+    $pdf->Cell(85, 5, $pdf->to_iso($nombre), 0, 0, 'L');
+
+    $pdf->SetFont('Arial', 'B', 9);
+    $pdf->Cell(15, 5, 'CC:', 0, 0, 'L');
+    $pdf->SetFont('Arial', '', 9);
+    $pdf->Cell(55, 5, $pdf->to_iso($cc), 0, 1, 'L');
+
+    $pdf->Ln(4);
 }
 
-$pdf = new PDF_Acta('P', 'mm', 'Letter');
-$pdf->AliasNbPages();
-$pdf->AddPage();
+class PDF_Acta_Traslado extends FPDF {
+    function to_iso($string) { return mb_convert_encoding($string, 'ISO-8859-1', 'UTF-8'); }
+    function Header() {}
+    function Footer() {}
+}
+
+$pdf = new PDF_Acta_Traslado('P', 'mm', 'Letter');
 $pdf->SetMargins(10, 10, 10);
+$pdf->SetAutoPageBreak(true, 10);
+$pdf->AddPage();
+
+$w_total = 195; 
+$x_start = 10;
+$y_start = 10;
+
+// ==========================================
+// BLOQUE 1: CABECERA (ENMARCADA)
+// ==========================================
+$pdf->SetLineWidth(0.5);
+$pdf->Rect($x_start, $y_start, $w_total, 30);
+$pdf->SetLineWidth(0.2); 
+
+$pdf->Image('imagenes/logo.png', $x_start + 2, $y_start + 4, 38);
+$pdf->Line($x_start + 42, $y_start, $x_start + 42, $y_start + 30); 
+$pdf->Line($x_start + 160, $y_start, $x_start + 160, $y_start + 30); 
+
+$pdf->SetFont('Arial', 'B', 8); 
+$pdf->SetXY($x_start + 42, $y_start + 2);
+$pdf->Cell(118, 4, $pdf->to_iso('PROCESO EVALUACIÓN Y CONTROL'), 0, 1, 'C');
+$pdf->SetX($x_start + 42);
+$pdf->Cell(118, 4, $pdf->to_iso('PROCEDIMIENTO DE AUDITORIA INTERNA'), 0, 1, 'C');
+$pdf->SetX($x_start + 42);
+// Dinámico: En traslado el original usaba Finansueños, lo atamos a la empresa destino
+if(strtoupper($empresa) === 'FINANSUEÑOS') {
+    $pdf->Cell(118, 4, $pdf->to_iso('FINANSUEÑOS SAS'), 0, 1, 'C');
+    $pdf->SetX($x_start + 42);
+    $pdf->Cell(118, 4, 'NIT. 901.723.445', 0, 1, 'C');
+} else {
+    $pdf->Cell(118, 4, $pdf->to_iso('ARPESOD ASOCIADOS SAS'), 0, 1, 'C');
+    $pdf->SetX($x_start + 42);
+    $pdf->Cell(118, 4, 'NIT. 900.333.755-6', 0, 1, 'C');
+}
+
+$pdf->Ln(1); 
+$pdf->SetFont('Arial', 'B', 9); 
+$pdf->SetX($x_start + 42);
+$pdf->Cell(118, 5, $pdf->to_iso('SOLICITUD DE INGRESO, TRASLADO Y/O'), 0, 1, 'C');
+$pdf->SetX($x_start + 42);
+$pdf->Cell(118, 5, $pdf->to_iso('DAR DE BAJA ACTIVOS FIJOS'), 0, 1, 'C');
+
+$pdf->SetY($y_start + 30);
+
+// ==========================================
+// BLOQUE 2: DATOS DEL DOCUMENTO
+// ==========================================
+$pdf->SetFont('Arial', 'B', 8);
+
+$y_current = $pdf->GetY();
+$pdf->Cell($w_total, 7, '', 1, 0); 
+$pdf->SetXY($x_start, $y_current);
+$pdf->Cell(85, 7, 'Fecha: ' . date('d/m/Y', strtotime($evento_data['fecha_evento'])), 0, 0, 'L');
+$pdf->Line($x_start + 85, $y_current, $x_start + 85, $y_current + 7); 
+$pdf->SetX($x_start + 86);
+$pdf->Cell(109, 7, 'Regional: ' . $pdf->to_iso($regional), 0, 1, 'L');
+
+$y_current = $pdf->GetY();
+$pdf->Cell($w_total, 7, '', 1, 0); 
+$pdf->SetXY($x_start, $y_current);
+$pdf->Cell(85, 7, $pdf->to_iso('Área: ' . ($cargo_recibe)), 0, 0, 'L');
+$pdf->Line($x_start + 85, $y_current, $x_start + 85, $y_current + 7); 
+$pdf->SetX($x_start + 86);
+$pdf->Cell(109, 7, 'Punto de Venta: ' . $pdf->to_iso($empresa), 0, 1, 'L');
+
+// ==========================================
+// BLOQUE 3: TEXTO LEGAL
+// ==========================================
+$texto_legal = "Para formalizar la solicitud, en la presente acta quedaran consignados los equipos y muebles que están bajo su responsabilidad, buen uso y cuidado. Los daños que se generen le serán descontados automáticamente.\n\nCuando haya terminación del contrato laboral o retiro voluntario, usted debe hacer entrega de los activos fijos aquí estipulados al líder de zona o en su defecto al nuevo encargado del puesto, ya que este será un requisito indispensable para la firma de paz y salvo por parte de la empresa.";
+
+$pdf->SetFont('Arial', '', 9);
+$pdf->MultiCell($w_total, 5, $pdf->to_iso($texto_legal), 1, 'J');
+
+// ==========================================
+// BLOQUE 4: TABLA DEL ACTIVO
+// ==========================================
+$pdf->SetFont('Arial','B',7);
+$y_table = $pdf->GetY();
+
+$w_cod = 25;
+$w_ser = 35;
+$w_mar = 30;
+$w_des = 50;
+$w_est_title = 15;
+$w_est_col = 5;
+$w_obs = $w_total - ($w_cod + $w_ser + $w_mar + $w_des + $w_est_title); 
+
+$pdf->Cell($w_cod, 10, $pdf->to_iso('Código'), 1, 0, 'C');
+$pdf->Cell($w_ser, 10, 'Serie', 1, 0, 'C');
+$pdf->Cell($w_mar, 10, 'Marca', 1, 0, 'C');
+$pdf->Cell($w_des, 10, $pdf->to_iso('Descripción del Activo'), 1, 0, 'C');
+
+$x_estado = $pdf->GetX();
+$pdf->Cell($w_est_title, 5, 'Estado', 1, 2, 'C');
+$pdf->SetFont('Arial','B',6);
+$pdf->Cell($w_est_col, 5, 'B', 1, 0, 'C');
+$pdf->Cell($w_est_col, 5, 'R', 1, 0, 'C');
+$pdf->Cell($w_est_col, 5, 'M', 1, 0, 'C');
+
+$pdf->SetXY($x_estado + $w_est_title, $y_table);
+$pdf->SetFont('Arial','B',7);
+$pdf->Cell($w_obs, 10, 'Observaciones', 1, 1, 'C');
+
+$pdf->SetFont('Arial','',7);
+$estado = isset($activo_data['estado']) ? strtoupper($activo_data['estado']) : '';
+$b = ($estado == 'BUENO') ? 'X' : '';
+$r = ($estado == 'REGULAR') ? 'X' : '';
+$m = ($estado == 'MALO') ? 'X' : '';
+
+$pdf->Cell($w_cod, 8, $pdf->to_iso($activo_data['Codigo_Inv'] ?? ''), 1, 0, 'C');
+$pdf->Cell($w_ser, 8, $pdf->to_iso($activo_data['serie'] ?? ''), 1, 0, 'C');
+$pdf->Cell($w_mar, 8, $pdf->to_iso($activo_data['marca'] ?? ''), 1, 0, 'C');
+$pdf->Cell($w_des, 8, $pdf->to_iso(substr($activo_data['nombre_tipo_activo'] ?? '', 0, 35)), 1, 0, 'C');
+$pdf->SetFont('Arial','B',7);
+$pdf->Cell($w_est_col, 8, $b, 1, 0, 'C');
+$pdf->Cell($w_est_col, 8, $r, 1, 0, 'C');
+$pdf->Cell($w_est_col, 8, $m, 1, 0, 'C');
+$pdf->SetFont('Arial','',7);
+$pdf->Cell($w_obs, 8, $pdf->to_iso(substr($activo_data['detalles'] ?? '', 0, 30)), 1, 1, 'C');
+
+
+// ==========================================
+// BLOQUE 5: OBSERVACIONES GENERALES
+// ==========================================
+$pdf->SetFont('Arial', 'B', 7);
+$pdf->SetFillColor(230, 230, 230);
+$pdf->Cell($w_total, 6, 'OBSERVACIONES GENERALES:', 1, 1, 'L', true);
+
+$y_obs_text = $pdf->GetY();
+$pdf->Rect($x_start, $y_obs_text, $w_total, 20); 
+$pdf->SetFont('Arial', '', 9);
+$pdf->SetXY($x_start + 2, $y_obs_text + 2);
+// Mostramos el detalle del evento de traslado 
+$pdf->MultiCell($w_total - 4, 5, $pdf->to_iso($evento_data['descripcion_evento'] ?? ''), 0, 'L');
+$pdf->SetY($y_obs_text + 20); 
+
+// =========================================================
+// INICIO DEL MARCO INFERIOR CONTINUO (CHECKBOX + FIRMAS)
+// =========================================================
+$y_start_footer = $pdf->GetY(); 
+
+$pdf->Ln(8);
+$pdf->SetX(15);
+$pdf->SetFont('Arial', 'B', 9);
+$pdf->Cell(70, 6, 'Certifico que el equipo detallado fue por:', 0, 0, 'L');
+
 $pdf->SetFont('Arial', '', 9);
 
-$pdf->Ln(5);
-$pdf->Cell(97.5, 7, $pdf->to_iso('Fecha: ' . date("d/m/Y", strtotime($evento_data['fecha_evento']))), 1, 0, 'C');
-$pdf->Cell(97.5, 7, $pdf->to_iso('Regional: ' . $regional), 1, 1, 'C');
-$pdf->Cell(195, 7, $pdf->to_iso('Empresa: ' . $empresa), 1, 1, 'C');
-$pdf->Ln(5);
+// Ingreso 
+$pdf->Rect($pdf->GetX() + 10, $pdf->GetY() + 1, 4, 4);
+$pdf->Cell(30, 6, 'Ingreso', 0, 0, 'R');
 
-$pdf->SetFont('Arial', '', 8);
-$pdf->MultiCell(0, 4, $pdf->to_iso("Para formalizar la solicitud, en la presente acta quedaran consignados los equipos y muebles que están bajo su responsabilidad, buen uso y cuidado. Los daños que se generen, le serán descontados automáticamente."), 0, 'J');
+// Traslado (Marcada porque es acta de traslado)
+$pdf->SetFont('Arial', 'B', 10);
+$pdf->Rect($pdf->GetX() + 10, $pdf->GetY() + 1, 4, 4);
+$pdf->Text($pdf->GetX() + 10.8, $pdf->GetY() + 4.5, 'X'); 
+$pdf->SetFont('Arial', '', 9);
+$pdf->Cell(30, 6, 'Traslado', 0, 0, 'R');
+
+// Baja
+$pdf->Rect($pdf->GetX() + 10, $pdf->GetY() + 1, 4, 4);
+$pdf->Cell(25, 6, 'Baja', 0, 1, 'R');
+
+$pdf->Ln(8);
+
+// ==========================================
+// FIRMAS VERTICALES ESTILIZADAS
+// ==========================================
+
+$pdf->SetDrawColor(200, 200, 200);
+$pdf->Line($x_start, $pdf->GetY(), $x_start + $w_total, $pdf->GetY());
+$pdf->SetDrawColor(0, 0, 0);
+
+renderFirmaVertical($pdf, 'Autorizado por:', $autorizado_por, $autorizado_cc);
+
+$pdf->SetDrawColor(200, 200, 200);
+$pdf->Line(15, $pdf->GetY(), 200, $pdf->GetY());
+$pdf->SetDrawColor(0, 0, 0);
+
+// Dejamos el nombre vacío pero ponemos la cédula original para que quien entrega firme
+renderFirmaVertical($pdf, 'Nombre de quien entrega:', '', $cc_entrega); 
+
+$pdf->SetDrawColor(200, 200, 200);
+$pdf->Line(15, $pdf->GetY(), 200, $pdf->GetY());
+$pdf->SetDrawColor(0, 0, 0);
+
+renderFirmaVertical($pdf, 'Nombre de quien recibe:', $nombre_recibe, $cc_recibe);
+
 $pdf->Ln(2);
-$pdf->MultiCell(0, 4, $pdf->to_iso("Cuando haya terminación del contrato laboral o retiro voluntario, usted debe hacer entrega de los activos fijos aqui estipulados al lider de zona o en su defecto al nuevo encargado del puesto, ya que este será un requisito indispensable para la firma de paz y salvo por parte de la empresa."), 0, 'J');
-$pdf->Ln(5);
 
-$pdf->SetFont('Arial', 'B', 8);
-$pdf->Cell(25, 10, $pdf->to_iso('Código'), 1, 0, 'C');
-$pdf->Cell(30, 10, 'Serie', 1, 0, 'C');
-$pdf->Cell(35, 10, 'Marca', 1, 0, 'C');
-$pdf->Cell(60, 10, $pdf->to_iso('Descripción del Activo'), 1, 0, 'C');
-$pdf->Cell(45, 5, 'Estado', 1, 1, 'C');
-$pdf->SetXY(160, $pdf->GetY() - 5);
-$pdf->Cell(15, 5, 'B', 1, 0, 'C');
-$pdf->Cell(15, 5, 'R', 1, 0, 'C');
-$pdf->Cell(15, 5, 'M', 1, 1, 'C');
 
-$pdf->SetFont('Arial', '', 8);
-$pdf->SetWidths([25, 30, 35, 60, 15, 15, 15]);
-$pdf->SetFont('Arial', '', 8);
-$pdf->SetWidths([25, 30, 35, 60, 15, 15, 15]);
+$y_end_footer = $pdf->GetY();
+$pdf->Rect($x_start, $y_start_footer, $w_total, $y_end_footer - $y_start_footer);
 
-// CÓDIGO CORREGIDO
-$pdf->Row([
-    $activo_data['Codigo_Inv'] ?? 'N/A',
-    $activo_data['serie'] ?? 'N/A',
-    $activo_data['marca'] ?? 'N/A',
-    $activo_data['nombre_tipo_activo'] ?? 'N/A',
-    (isset($activo_data['estado']) && $activo_data['estado'] == 'Bueno' ? 'X' : ''),
-    (isset($activo_data['estado']) && $activo_data['estado'] == 'Regular' ? 'X' : ''),
-    (isset($activo_data['estado']) && $activo_data['estado'] == 'Malo' ? 'X' : '')
-]);
-
-// También protegemos y corregimos el campo de detalles
-$observaciones = $activo_data['detalles'] ?? 'Ninguna.';
-$pdf->MultiCell(195, 20, $pdf->to_iso('OBSERVACIONES GENERALES: ' . $observaciones), 1, 'L');
-$pdf->Ln(2);
-$pdf->SetFont('Arial', 'B', 9);
-$pdf->Cell(50, 5, $pdf->to_iso('Certifico que el equipo detallado fue por:'), 0, 1, 'L');
-$pdf->Draw_Checkbox('Ingreso', false);
-$pdf->Draw_Checkbox('Traslado', true);
-$pdf->Draw_Checkbox('Baja', false);
-$pdf->Ln(15);
-
-$pdf->Draw_Signature_Block('Autorizado por', $autorizado_por, $autorizado_cc);
-$pdf->Ln(10);
-// --- CORRECCIÓN: Dejar en blanco el nombre y mostrar solo CC de quien entrega ---
-$pdf->Draw_Signature_Block('Nombre de quien entrega', '', $cc_entrega);
-$pdf->Ln(10);
-$pdf->Draw_Signature_Block('Nombre de quien recibe', $nombre_recibe, $cc_recibe);
-
-$pdf->Output('I', 'Acta_Traslado_' . ($activo_data['serie'] ?? $id_historial) . '.pdf');
+$pdf->Output('I', 'Acta_Traslado_S' . ($activo_data['serie'] ?? $id_historial) . '.pdf');
 exit;
 ?>
