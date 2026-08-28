@@ -92,22 +92,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $raw_val = preg_replace('/[^\d.]/', '', $raw_val);
                     $valor_compra = empty($raw_val) ? 0 : floatval($raw_val);
                     
-                    // ========================================================
-                    // FECHAS (Corrección del BUG de 1970)
+// ========================================================
+                    // FECHAS (Corrección Zona Horaria Colombia -5)
                     // ========================================================
                     $cellDate = $sheet->getCell('K' . $row);
                     $fecha_compra = null;
                     $valDateRaw = $cellDate->getValue();
                     
-                    if (\PhpOffice\PhpSpreadsheet\Shared\Date::isDateTime($cellDate)) {
-                        $fecha_compra = date('Y-m-d', \PhpOffice\PhpSpreadsheet\Shared\Date::excelToTimestamp($valDateRaw));
-                    } elseif (is_numeric($valDateRaw)) {
-                        // Si Excel manda el número de serie de fecha (ej. 45123) pero sin formato visual
-                        $fecha_compra = date('Y-m-d', \PhpOffice\PhpSpreadsheet\Shared\Date::excelToTimestamp($valDateRaw));
+                    if (\PhpOffice\PhpSpreadsheet\Shared\Date::isDateTime($cellDate) || is_numeric($valDateRaw)) {
+                        // Usamos un Objeto DateTime en lugar de Timestamp para que PHP no le reste 5 horas
+                        $dateTime = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($valDateRaw);
+                        $fecha_compra = $dateTime->format('Y-m-d');
                     } else {
                         $val_date_str = trim((string)$valDateRaw);
                         if (!empty($val_date_str)) {
-                            // En caso de que venga como texto "27/08/2026"
                             $timestamp = strtotime(str_replace('/', '-', $val_date_str));
                             if ($timestamp !== false) {
                                 $fecha_compra = date('Y-m-d', $timestamp);
@@ -115,11 +113,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
                     }
                     
-                    // Escudo final: Si por algún motivo se genera la fecha 1970, la anulamos.
                     if ($fecha_compra === '1970-01-01') {
                         $fecha_compra = null;
                     }
-
                     $raw_detalles = trim((string)$sheet->getCell('L' . $row)->getValue());
                     $detalles = in_array(strtoupper($raw_detalles), $valores_nulos_comunes) ? '' : mb_strtoupper($raw_detalles, 'UTF-8');
 
