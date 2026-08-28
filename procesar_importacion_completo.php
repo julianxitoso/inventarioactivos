@@ -2,12 +2,13 @@
 ob_start();
 // =================================================================================
 // ARCHIVO: procesar_importacion_completo.php
-// VERSIÓN: DEFINITIVA (Generador de Excel de Omitidos + Vacunas Moneda/Fechas)
+// VERSIÓN: DEFINITIVA (Excel de Errores Completo + Vacunas Moneda/Fechas)
 // =================================================================================
 
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
@@ -56,29 +57,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 
                 $highestRow = $sheet->getHighestRow();
+                $highestColumn = $sheet->getHighestColumn();
                 $conexion->begin_transaction();
 
                 $stmt_buscar_usuario = $conexion->prepare("SELECT id, id_centro_costo FROM usuarios WHERE usuario = ? LIMIT 1");
                 $valores_nulos_comunes = ['', '.', 'S/N', 'S/N.', 'SN', 'N/A', 'NA', 'SIN SERIE', 'NO TIENE', 'NAN'];
                 
                 // ==================================================================
-                // INICIAR GENERADOR DE EXCEL DE OMITIDOS
+                // INICIAR GENERADOR DE EXCEL DE OMITIDOS (DINÁMICO)
                 // ==================================================================
                 $errorSpreadsheet = new Spreadsheet();
                 $errorSheet = $errorSpreadsheet->getActiveSheet();
                 $errorSheet->setTitle('Activos Omitidos');
                 
-                // Encabezados del archivo de errores
-                $headers = ['FILA EXCEL', 'CATEGORÍA', 'TIPO ACTIVO', 'CÉDULA RESPONSABLE', 'CÓDIGO INVENTARIO', 'SERIE', 'MOTIVO DE OMISIÓN'];
+                // Extraer los encabezados originales de la Fila 1 y agregar la columna de Motivo
+                $headers = $sheet->rangeToArray('A1:' . $highestColumn . '1', NULL, TRUE, FALSE)[0];
+                $headers[] = 'MOTIVO DE OMISIÓN';
+                
                 $errorSheet->fromArray($headers, NULL, 'A1');
-                $errorSheet->getStyle('A1:G1')->getFont()->setBold(true);
-                $errorSheet->getStyle('A1:G1')->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FFFF0000');
-                $errorSheet->getStyle('A1:G1')->getFont()->getColor()->setARGB('FFFFFFFF');
-                $errorRow = 2; // Empezar a escribir errores desde la fila 2
+                
+                // Darle estilo rojo y negrita a la cabecera
+                $lastColIndex = count($headers);
+                $lastColLetter = Coordinate::stringFromColumnIndex($lastColIndex);
+                $errorSheet->getStyle('A1:' . $lastColLetter . '1')->getFont()->setBold(true);
+                $errorSheet->getStyle('A1:' . $lastColLetter . '1')->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FFFF0000');
+                $errorSheet->getStyle('A1:' . $lastColLetter . '1')->getFont()->getColor()->setARGB('FFFFFFFF');
+                
+                $errorRow = 2; // Iniciar escritura de errores en la fila 2
                 
                 for ($row = 2; $row <= $highestRow; $row++) {
                     
-                    // 1. LECTURA Y LIMPIEZA DE TEXTOS BÁSICOS
+                    // LECTURA Y LIMPIEZA DE TEXTOS BÁSICOS
                     $raw_cat = trim((string)$sheet->getCell('A' . $row)->getValue());
                     $categoria = in_array(strtoupper($raw_cat), $valores_nulos_comunes) ? '' : mb_strtoupper($raw_cat, 'UTF-8');
                     
@@ -106,17 +115,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $estado = in_array(strtoupper($raw_estado), $valores_nulos_comunes) ? '' : mb_strtoupper($raw_estado, 'UTF-8');
 
                     // ========================================================
-                    // LIMPIEZA EXTREMA DE PRECIOS COLOMBIANOS (Columna J)
+                    // LIMPIEZA INTELIGENTE DE PRECIOS COLOMBIANOS
                     // ========================================================
-                    $raw_val = (string)$sheet->getCell('J' . $row)->getCalculatedValue();
-                    $raw_val = trim(str_replace(['$', ' ', 'COP'], '', $raw_val));
-                    $raw_val = preg_replace('/[,.]00$/', '', $raw_val);
-                    $raw_val = str_replace(['.', ','], '', $raw_val);
-                    $raw_val = preg_replace('/[^0-9]/', '', $raw_val);
-                    $valor_compra = empty($raw_val) ? 0 : floatval($raw_val);
+                    $cellVal = $sheet->getCell('J' . $row)->getCalculatedValue();
+                    
+                    if (is_numeric($cellVal)) {
+                        $valor_compra = floatval($cellVal);
+                    } else {
+                        $str_val = trim((string)$cellVal);
+                        $str_val = str_ireplace(['$', ' ', 'COP'], '', $str_val);
+                        
+                        if (preg_match('/,\d{1,2}$/', $str_val)) {
+                            $str_val = str_replace('.', '', $str_val);
+                            $str_val = str_replace(',', '.', $str_val);
+                        } elseif (preg_match('/\.\d{1,2}$/', $str_val)) {
+                            $str_val = str_replace(',', '', $str_val);
+                        } else {
+                            $str_val = str_replace(['.', ','], '', $str_val);
+                        }
+                        
+                        $str_val = preg_replace('/[^0-9.]/', '', $str_val);
+                        $valor_compra = empty($str_val) ? 0 : floatval($str_val);
+                    }
 
                     // ========================================================
-                    // FECHAS (Corrección Zona Horaria Colombia -5 y Bug 1970)
+                    // FECHAS (Corrección Zona Horaria Colombia -5)
                     // ========================================================
                     $cellDate = $sheet->getCell('K' . $row);
                     $fecha_compra = null;
@@ -156,7 +179,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if (empty($categoria) && empty($nombre_tipo) && empty($cedula_responsable)) { continue; }
 
                     // ========================================================
-                    // 2. AUTO-ASIGNAR CENTRO DE COSTO SEGÚN CÉDULA
+                    // FUNCIÓN AUXILIAR: REGISTRAR ERROR Y COPIAR FILA COMPLETA
+                    // ========================================================
+                    $registrarError = function($motivoError) use (&$errores, &$errorSheet, &$errorRow, $sheet, $row, $highestColumn) {
+                        $errores[] = "Fila {$row}: " . $motivoError;
+                        // Leer la fila completa de la A hasta la última letra
+                        $rowData = $sheet->rangeToArray('A' . $row . ':' . $highestColumn . $row, NULL, TRUE, FALSE)[0];
+                        // Agregar el motivo al final
+                        $rowData[] = $motivoError;
+                        // Pegarlo en la hoja de errores
+                        $errorSheet->fromArray($rowData, NULL, 'A'.$errorRow);
+                        $errorRow++;
+                    };
+
+                    // ========================================================
+                    // VALIDACIONES
                     // ========================================================
                     $id_usuario_responsable = null;
                     $id_centro_costo = null;
@@ -169,22 +206,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $id_usuario_responsable = $row_usu['id'];
                         $id_centro_costo = $row_usu['id_centro_costo'];
                     } else {
-                        // REPORTE DE ERROR AL EXCEL
-                        $motivo = "La cédula {$cedula_responsable} no existe en el sistema.";
-                        $errores[] = "Fila {$row}: " . $motivo;
-                        $errorSheet->fromArray([$row, $categoria, $nombre_tipo, $cedula_responsable, $codigo_inventario, $serie, $motivo], NULL, 'A'.$errorRow);
-                        $errorRow++;
+                        $registrarError("La cédula {$cedula_responsable} no existe en el sistema.");
                         continue; 
                     }
 
-                    // ========================================================
-                    // 3. GESTIÓN DE CATEGORÍAS Y TIPOS
-                    // ========================================================
+                    // Categoría
                     $id_categoria = null;
                     $res_cat = $conexion->query("SELECT id_categoria FROM categorias_activo WHERE nombre_categoria = '" . $conexion->real_escape_string($categoria) . "' LIMIT 1");
                     
                     if ($res_cat && $res_cat->num_rows > 0) {
                         $id_categoria = $res_cat->fetch_object()->id_categoria;
+                        $sql_upd_cat = "UPDATE categorias_activo SET cuenta_contable = ?, nombre_cuenta = ?, cuenta_depreciacion = ?, nombre_cuenta_depreciacion = ? WHERE id_categoria = ?";
+                        $stmt_upd_cat = $conexion->prepare($sql_upd_cat);
+                        $stmt_upd_cat->bind_param("ssssi", $codigo_cuenta, $nombre_cuenta, $codigo_depreciacion, $nombre_depreciacion, $id_categoria);
+                        $stmt_upd_cat->execute();
+                        $stmt_upd_cat->close();
                     } else {
                         $sql_ins_cat = "INSERT INTO categorias_activo (nombre_categoria, cuenta_contable, nombre_cuenta, cuenta_depreciacion, nombre_cuenta_depreciacion) VALUES (?, ?, ?, ?, ?)";
                         $stmt_ins_cat = $conexion->prepare($sql_ins_cat);
@@ -194,6 +230,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $stmt_ins_cat->close();
                     }
 
+                    // Tipo
                     $id_tipo_activo = null;
                     $res_tipo = $conexion->query("SELECT id_tipo_activo FROM tipos_activo WHERE nombre_tipo_activo = '" . $conexion->real_escape_string($nombre_tipo) . "' LIMIT 1");
                     
@@ -208,16 +245,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $stmt_ins->close();
                     }
 
-                    // ========================================================
-                    // 5. PRE-VALIDACIONES CONTRA DUPLICADOS EXACTOS
-                    // ========================================================
+                    // Duplicados
                     if ($codigo_inventario !== null) {
                         $res_inv = $conexion->query("SELECT id FROM activos_tecnologicos WHERE Codigo_Inv = '" . $conexion->real_escape_string($codigo_inventario) . "' LIMIT 1");
                         if ($res_inv && $res_inv->num_rows > 0) {
-                            $motivo = "El Código {$codigo_inventario} ya está registrado.";
-                            $errores[] = "Fila {$row}: " . $motivo;
-                            $errorSheet->fromArray([$row, $categoria, $nombre_tipo, $cedula_responsable, $codigo_inventario, $serie, $motivo], NULL, 'A'.$errorRow);
-                            $errorRow++;
+                            $registrarError("El Código Inventario {$codigo_inventario} ya está registrado.");
                             continue;
                         }
                     }
@@ -225,16 +257,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if ($serie !== null) {
                         $res_serie = $conexion->query("SELECT id FROM activos_tecnologicos WHERE serie = '" . $conexion->real_escape_string($serie) . "' LIMIT 1");
                         if ($res_serie && $res_serie->num_rows > 0) {
-                            $motivo = "El serial {$serie} ya está registrado.";
-                            $errores[] = "Fila {$row}: " . $motivo;
-                            $errorSheet->fromArray([$row, $categoria, $nombre_tipo, $cedula_responsable, $codigo_inventario, $serie, $motivo], NULL, 'A'.$errorRow);
-                            $errorRow++;
+                            $registrarError("El serial {$serie} ya está registrado.");
                             continue;
                         }
                     }
 
                     // ========================================================
-                    // 6. INSERCIÓN DEL ACTIVO FINAL
+                    // INSERCIÓN DEL ACTIVO FINAL
                     // ========================================================
                     $sql_insert = "INSERT INTO activos_tecnologicos 
                     (id_tipo_activo, marca, modelo, serie, estado, Codigo_Inv, tenencia, id_usuario_responsable, id_centro_costo, fecha_compra, valor_aproximado, vida_util, detalles) 
@@ -249,17 +278,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if ($stmt_activo->execute()) {
                         $importados++;
                     } else {
-                        $motivo = "Error en base de datos: " . $stmt_activo->error;
-                        $errores[] = "Fila {$row}: " . $motivo;
-                        $errorSheet->fromArray([$row, $categoria, $nombre_tipo, $cedula_responsable, $codigo_inventario, $serie, $motivo], NULL, 'A'.$errorRow);
-                        $errorRow++;
+                        $registrarError("Error en BD al guardar activo: " . $stmt_activo->error);
                     }
                     $stmt_activo->close();
                 }
 
                 $stmt_buscar_usuario->close();
 
-                // GENERAR ARCHIVO DE EXCEL SI HUBO ERRORES
+                // ========================================================
+                // CERRAR Y GENERAR ARCHIVO SI HUBO ERRORES
+                // ========================================================
                 $btnDescarga = "";
                 if ($errorRow > 2) {
                     $fileName = 'activos_omitidos_' . date('Ymd_His') . '.xlsx';
@@ -267,7 +295,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $writer = new Xlsx($errorSpreadsheet);
                     $writer->save($filePath);
                     
-                    // Inyectar un botón bonito en la alerta
                     $btnDescarga = "<br><br><a href='{$fileName}' class='btn btn-warning btn-sm border border-dark text-dark fw-bold shadow-sm' download><i class='bi bi-file-earmark-excel'></i> Descargar Reporte de Omitidos (Excel)</a>";
                 }
 
