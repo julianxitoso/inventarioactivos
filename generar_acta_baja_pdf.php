@@ -16,7 +16,6 @@ if (!isset($_GET['id_historial']) || empty($_GET['id_historial'])) {
 }
 $id_historial = (int)$_GET['id_historial'];
 
-// Traer la información del evento, el activo y el usuario responsable
 $sql = "SELECT 
             h.fecha_evento, h.descripcion_evento, h.usuario_responsable as auditor,
             a.Codigo_Inv, a.serie, a.marca, a.estado as estado_fisico, a.detalles,
@@ -46,166 +45,229 @@ if (!$hist) {
 class PDF_Acta_Baja extends FPDF {
     function to_iso($string) { return mb_convert_encoding($string, 'ISO-8859-1', 'UTF-8'); }
     
-    function Header() {
-        // Logo de la Empresa (Izquierda)
-        $this->Image('imagenes/logo.png', 10, 10, 45);
-        
-        // Títulos Centrales
-        $this->SetFont('Arial', 'B', 10);
-        $this->SetXY(55, 12);
-        $this->Cell(95, 5, $this->to_iso('PROCESO EVALUACIÓN Y CONTROL'), 0, 1, 'C');
-        $this->SetX(55);
-        $this->Cell(95, 5, $this->to_iso('PROCEDIMIENTO DE AUDITORIA INTERNA'), 0, 1, 'C');
-        
-        // Títulos Derecha (Arpesod)
-        $this->SetXY(150, 12);
-        $this->Cell(55, 5, $this->to_iso('ARPESOD ASOCIADOS SAS'), 0, 1, 'C');
-        $this->SetX(150);
-        $this->Cell(55, 5, 'NIT. 900.333.755-6', 0, 1, 'C');
-        
-        $this->Ln(8);
-        
-        // Título Principal del Documento
-        $this->SetFont('Arial', 'B', 11);
-        $this->SetFillColor(220, 220, 220);
-        $this->Cell(0, 8, $this->to_iso('SOLICITUD DE INGRESO, TRASLADO Y/O DAR DE BAJA ACTIVOS FIJOS'), 1, 1, 'C', true);
-        $this->Ln(5);
-    }
-    
+    function Header() {}
     function Footer() {}
 }
 
 $pdf = new PDF_Acta_Baja('P', 'mm', 'Letter');
-$pdf->AliasNbPages();
-$pdf->AddPage();
 $pdf->SetMargins(10, 10, 10);
+$pdf->SetAutoPageBreak(true, 10);
+$pdf->AddPage();
 
-// --- BLOQUE DE INFORMACIÓN (FECHA, REGIONAL, ÁREA) ---
-$pdf->SetFont('Arial', 'B', 9);
-$pdf->Cell(15, 6, 'Fecha:', 0, 0);
-$pdf->SetFont('Arial', '', 9);
-$pdf->Cell(45, 6, date('d/m/Y', strtotime($hist['fecha_evento'])), 0, 0);
+$w_total = 195; // Ancho total útil de la página
 
-$pdf->SetFont('Arial', 'B', 9);
-$pdf->Cell(18, 6, 'Regional:', 0, 0);
-$pdf->SetFont('Arial', '', 9);
-$pdf->Cell(45, 6, $pdf->to_iso($hist['regional'] ?? 'N/A'), 0, 1);
-
-$pdf->SetFont('Arial', 'B', 9);
-$pdf->Cell(15, 6, 'Area:', 0, 0);
-$pdf->SetFont('Arial', '', 9);
-$pdf->Cell(45, 6, $pdf->to_iso($hist['nombre_cargo'] ?? 'N/A'), 0, 0);
-
-$pdf->SetFont('Arial', 'B', 9);
-$pdf->Cell(28, 6, 'Punto de Venta:', 0, 0);
-$pdf->SetFont('Arial', '', 9);
-$pdf->Cell(45, 6, $pdf->to_iso($hist['empresa'] ?? 'N/A'), 0, 1);
-$pdf->Ln(5);
-
-// --- BLOQUE DE TEXTO LEGAL ---
-$texto_legal = "Para formalizar la solicitud, en la presente acta quedaran consignados los equipos y muebles que están bajo su responsabilidad, buen uso y cuidado. Los daños que se generen le serán descontados automáticamente.\nCuando haya terminación del contrato laboral o retiro voluntario, usted debe hacer entrega de los activos fijos aquí estipulados al líder de zona o en su defecto al nuevo encargado del puesto, ya que este será un requisito indispensable para la firma de paz y salvo por parte de la empresa.";
-$pdf->SetFont('Arial', '', 9);
-$pdf->MultiCell(0, 5, $pdf->to_iso($texto_legal), 0, 'J');
-$pdf->Ln(5);
-
-// --- CABECERA DE LA TABLA DE ACTIVOS ---
-$pdf->SetFont('Arial','B',8);
-$pdf->SetFillColor(230, 230, 230);
-
-// Guardar X y Y para la subcabecera de Estado
-$x_start = $pdf->GetX();
+// ==========================================
+// BLOQUE 1: CABECERA (ENMARCADA)
+// ==========================================
 $y_start = $pdf->GetY();
+$x_start = $pdf->GetX();
 
-$pdf->Cell(20, 10, $pdf->to_iso('Código'), 1, 0, 'C', true);
-$pdf->Cell(35, 10, 'Serie', 1, 0, 'C', true);
-$pdf->Cell(35, 10, 'Marca', 1, 0, 'C', true);
-$pdf->Cell(40, 10, $pdf->to_iso('Descripción del Activo'), 1, 0, 'C', true);
+// Dibujar marco exterior grueso
+$pdf->SetLineWidth(0.5);
+$pdf->Rect($x_start, $y_start, $w_total, 30);
+$pdf->SetLineWidth(0.2); // Volver al grosor normal
 
-// Cabecera compartida de ESTADO
-$x_estado = $pdf->GetX();
-$pdf->Cell(15, 5, 'Estado', 1, 2, 'C', true);
+// Logo
+$pdf->Image('imagenes/logo.png', $x_start + 2, $y_start + 4, 38);
+
+// División vertical logo
+$pdf->Line($x_start + 42, $y_start, $x_start + 42, $y_start + 30);
+// División vertical vacía derecha
+$pdf->Line($x_start + 160, $y_start, $x_start + 160, $y_start + 30);
+
+// Textos centrales
+$pdf->SetFont('Arial', 'B', 9);
+$pdf->SetXY($x_start + 42, $y_start + 4);
+$pdf->Cell(118, 5, $pdf->to_iso('PROCESO EVALUACIÓN Y CONTROL'), 0, 1, 'C');
+$pdf->SetX($x_start + 42);
+$pdf->Cell(118, 5, $pdf->to_iso('PROCEDIMIENTO DE AUDITORIA INTERNA'), 0, 1, 'C');
+$pdf->SetX($x_start + 42);
+$pdf->Cell(118, 5, $pdf->to_iso('ARPESOD ASOCIADOS SAS'), 0, 1, 'C');
+$pdf->SetX($x_start + 42);
+$pdf->Cell(118, 5, 'NIT. 900.333.755-6', 0, 1, 'C');
+$pdf->SetX($x_start + 42);
+$pdf->Cell(118, 5, $pdf->to_iso('SOLICITUD DE INGRESO, TRASLADO Y/O'), 0, 1, 'C');
+$pdf->SetX($x_start + 42);
+$pdf->Cell(118, 5, $pdf->to_iso('DAR DE BAJA ACTIVOS FIJOS'), 0, 1, 'C');
+
+$pdf->SetY($y_start + 30);
+
+// ==========================================
+// BLOQUE 2: DATOS DEL DOCUMENTO
+// ==========================================
+$pdf->SetFont('Arial', 'B', 8);
+
+// Fila 1: Fecha / Regional
+$y_current = $pdf->GetY();
+$pdf->Cell($w_total, 7, '', 1, 0); // Contenedor
+$pdf->SetXY($x_start, $y_current);
+$pdf->Cell(85, 7, 'Fecha: ' . date('d/m/Y', strtotime($hist['fecha_evento'])), 0, 0, 'L');
+$pdf->Line($x_start + 85, $y_current, $x_start + 85, $y_current + 7); // División vertical
+$pdf->SetX($x_start + 86);
+$pdf->Cell(109, 7, 'Regional: ' . $pdf->to_iso($hist['regional'] ?? 'N/A'), 0, 1, 'L');
+
+// Fila 2: Area / Punto Venta
+$y_current = $pdf->GetY();
+$pdf->Cell($w_total, 7, '', 1, 0); // Contenedor
+$pdf->SetXY($x_start, $y_current);
+$pdf->Cell(85, 7, $pdf->to_iso('Área: ' . ($hist['nombre_cargo'] ?? 'N/A')), 0, 0, 'L');
+$pdf->Line($x_start + 85, $y_current, $x_start + 85, $y_current + 7); // División vertical
+$pdf->SetX($x_start + 86);
+$pdf->Cell(109, 7, 'Punto de Venta: ' . $pdf->to_iso($hist['empresa'] ?? 'N/A'), 0, 1, 'L');
+
+// ==========================================
+// BLOQUE 3: TEXTO LEGAL (ENMARCADO)
+// ==========================================
+$texto_legal = "Para formalizar la solicitud, en la presente acta quedaran consignados los equipos y muebles que están bajo su responsabilidad, buen uso y cuidado. Los daños que se generen le serán descontados automáticamente.\n\nCuando haya terminación del contrato laboral o retiro voluntario, usted debe hacer entrega de los activos fijos aquí estipulados al líder de zona o en su defecto al nuevo encargado del puesto, ya que este será un requisito indispensable para la firma de paz y salvo por parte de la empresa.";
+
+$y_text = $pdf->GetY();
+$pdf->SetFont('Arial', '', 9);
+$pdf->MultiCell($w_total, 5, $pdf->to_iso($texto_legal), 1, 'J');
+
+// ==========================================
+// BLOQUE 4: TABLA DEL ACTIVO
+// ==========================================
 $pdf->SetFont('Arial','B',7);
-$pdf->Cell(5, 5, 'B', 1, 0, 'C', true);
-$pdf->Cell(5, 5, 'R', 1, 0, 'C', true);
-$pdf->Cell(5, 5, 'M', 1, 0, 'C', true);
+$y_table = $pdf->GetY();
 
-// Volver al nivel de la cabecera para "Observaciones"
-$pdf->SetXY($x_estado + 15, $y_start);
-$pdf->SetFont('Arial','B',8);
-$pdf->Cell(50, 10, 'Observaciones', 1, 1, 'C', true);
+// Anchos de columnas
+$w_cod = 25;
+$w_ser = 35;
+$w_mar = 30;
+$w_des = 50;
+$w_est_title = 15;
+$w_est_col = 5;
+$w_obs = $w_total - ($w_cod + $w_ser + $w_mar + $w_des + $w_est_title); // Resto del espacio (40)
 
-// --- CONTENIDO DE LA TABLA (EL ACTIVO) ---
-$pdf->SetFont('Arial','',8);
+// Cabecera Principal
+$pdf->Cell($w_cod, 10, $pdf->to_iso('Código'), 1, 0, 'C');
+$pdf->Cell($w_ser, 10, 'Serie', 1, 0, 'C');
+$pdf->Cell($w_mar, 10, 'Marca', 1, 0, 'C');
+$pdf->Cell($w_des, 10, $pdf->to_iso('Descripción del Activo'), 1, 0, 'C');
 
-// Calcular la X para las casillas de estado (Bueno, Regular, Malo)
+// Sub-tabla de Estado
+$x_estado = $pdf->GetX();
+$pdf->Cell($w_est_title, 5, 'Estado', 1, 2, 'C');
+$pdf->SetFont('Arial','B',6);
+$pdf->Cell($w_est_col, 5, 'B', 1, 0, 'C');
+$pdf->Cell($w_est_col, 5, 'R', 1, 0, 'C');
+$pdf->Cell($w_est_col, 5, 'M', 1, 0, 'C');
+
+// Cabecera Observaciones
+$pdf->SetXY($x_estado + $w_est_title, $y_table);
+$pdf->SetFont('Arial','B',7);
+$pdf->Cell($w_obs, 10, 'Observaciones', 1, 1, 'C');
+
+// --- DATOS DEL ACTIVO ---
+$pdf->SetFont('Arial','',7);
 $estado = strtoupper($hist['estado_fisico']);
 $b = ($estado == 'BUENO') ? 'X' : '';
 $r = ($estado == 'REGULAR') ? 'X' : '';
 $m = ($estado == 'MALO') ? 'X' : '';
 
-// Fila de datos
-$pdf->Cell(20, 8, $pdf->to_iso($hist['Codigo_Inv'] ?? 'S/C'), 1, 0, 'C');
-$pdf->Cell(35, 8, $pdf->to_iso($hist['serie'] ?? 'S/S'), 1, 0, 'C');
-$pdf->Cell(35, 8, $pdf->to_iso($hist['marca'] ?? 'S/M'), 1, 0, 'C');
-$pdf->Cell(40, 8, $pdf->to_iso(substr($hist['nombre_tipo_activo'] ?? 'N/A', 0, 25)), 1, 0, 'C');
-$pdf->Cell(5, 8, $b, 1, 0, 'C');
-$pdf->Cell(5, 8, $r, 1, 0, 'C');
-$pdf->Cell(5, 8, $m, 1, 0, 'C');
-$pdf->Cell(50, 8, $pdf->to_iso(substr($hist['detalles'] ?? 'Sin detalles', 0, 30)), 1, 1, 'C');
+$pdf->Cell($w_cod, 8, $pdf->to_iso($hist['Codigo_Inv'] ?? ''), 1, 0, 'C');
+$pdf->Cell($w_ser, 8, $pdf->to_iso($hist['serie'] ?? ''), 1, 0, 'C');
+$pdf->Cell($w_mar, 8, $pdf->to_iso($hist['marca'] ?? ''), 1, 0, 'C');
+$pdf->Cell($w_des, 8, $pdf->to_iso(substr($hist['nombre_tipo_activo'] ?? '', 0, 35)), 1, 0, 'C');
+$pdf->SetFont('Arial','B',7);
+$pdf->Cell($w_est_col, 8, $b, 1, 0, 'C');
+$pdf->Cell($w_est_col, 8, $r, 1, 0, 'C');
+$pdf->Cell($w_est_col, 8, $m, 1, 0, 'C');
+$pdf->SetFont('Arial','',7);
+$pdf->Cell($w_obs, 8, $pdf->to_iso(substr($hist['detalles'] ?? '', 0, 30)), 1, 1, 'C');
 
-$pdf->Ln(8);
+// ==========================================
+// BLOQUE 5: OBSERVACIONES GENERALES
+// ==========================================
+$y_obs = $pdf->GetY();
+$pdf->SetFont('Arial', 'B', 7);
+$pdf->SetFillColor(230, 230, 230);
+$pdf->Cell($w_total, 6, 'OBSERVACIONES GENERALES:', 1, 1, 'L', true);
 
-// --- SECCIÓN: OBSERVACIONES DEL EVENTO (Por qué se dio de baja) ---
-$pdf->SetFont('Arial', 'B', 9);
-$pdf->Cell(55, 6, 'OBSERVACIONES GENERALES:', 0, 0);
+// Espacio vacío para escribir observaciones (aprox 20mm) o el motivo de la baja
+$y_obs_text = $pdf->GetY();
+$pdf->Rect($x_start, $y_obs_text, $w_total, 20); // Marco de observaciones
 $pdf->SetFont('Arial', '', 9);
-$pdf->MultiCell(0, 6, $pdf->to_iso($hist['descripcion_evento']), 0, 'L');
-$pdf->Ln(6);
+$pdf->SetXY($x_start + 2, $y_obs_text + 2);
+$pdf->MultiCell($w_total - 4, 5, $pdf->to_iso($hist['descripcion_evento']), 0, 'L');
+$pdf->SetY($y_obs_text + 20); // Avanzar el cursor debajo del marco
 
-// --- SECCIÓN: CHECKBOX TIPO DE ACTA ---
+// ==========================================
+// BLOQUE 6: CHECKBOX (INGRESO / TRASLADO / BAJA)
+// ==========================================
+$pdf->Ln(5);
 $pdf->SetFont('Arial', 'B', 9);
-$pdf->Cell(70, 6, 'Certifico que el equipo detallado fue por:', 0, 0);
+$pdf->Cell(80, 6, 'Certifico que el equipo detallado fue por:', 0, 0, 'L');
 
 $pdf->SetFont('Arial', '', 9);
-$pdf->Cell(15, 6, 'Ingreso', 0, 0); 
-$pdf->Cell(5, 5, '', 1, 0, 'C'); // Casilla Vacía
-$pdf->Cell(5, 6, '', 0, 0);
+// Ingreso
+$pdf->Rect($pdf->GetX() + 5, $pdf->GetY() + 1, 4, 4);
+$pdf->Cell(25, 6, 'Ingreso', 0, 0, 'R');
 
-$pdf->Cell(15, 6, 'Traslado', 0, 0); 
-$pdf->Cell(5, 5, '', 1, 0, 'C'); // Casilla Vacía
-$pdf->Cell(5, 6, '', 0, 0);
+// Traslado
+$pdf->Rect($pdf->GetX() + 10, $pdf->GetY() + 1, 4, 4);
+$pdf->Cell(30, 6, 'Traslado', 0, 0, 'R');
 
-$pdf->Cell(10, 6, 'Baja', 0, 0); 
+// Baja (Marcada)
 $pdf->SetFont('Arial', 'B', 10);
-$pdf->Cell(5, 5, 'X', 1, 1, 'C'); // Casilla Marcada con X
+$pdf->Rect($pdf->GetX() + 10, $pdf->GetY() + 1, 4, 4);
+$pdf->Text($pdf->GetX() + 10.8, $pdf->GetY() + 4.5, 'X'); // Escribir la X dentro
+$pdf->SetFont('Arial', '', 9);
+$pdf->Cell(25, 6, 'Baja', 0, 1, 'R');
+
 $pdf->Ln(15);
 
-// --- SECCIÓN DE FIRMAS ---
-$block_width = 65;
+// ==========================================
+// BLOQUE 7: FIRMAS
+// ==========================================
+$col_width = $w_total / 3;
 
-// Títulos de Firmas
+// --- Títulos ---
 $pdf->SetFont('Arial', 'B', 9);
-$pdf->Cell($block_width, 5, 'Autorizado por', 0, 0, 'L');
-$pdf->Cell($block_width, 5, 'Nombre de quien entrega', 0, 0, 'L');
-$pdf->Cell($block_width, 5, 'Nombre de quien recibe', 0, 1, 'L');
+$pdf->Cell($col_width, 5, 'Autorizado por', 0, 0, 'L');
+$pdf->Cell($col_width, 5, 'Nombre de quien entrega', 0, 0, 'L');
+$pdf->Cell($col_width, 5, 'Nombre de quien recibe', 0, 1, 'L');
 
-$pdf->SetFont('Arial', '', 9);
-$pdf->Cell($block_width, 5, 'CC: ', 0, 0, 'L');
-$pdf->Cell($block_width, 5, 'CC: ' . $pdf->to_iso($hist['responsable_cedula'] ?? ''), 0, 0, 'L');
-$pdf->Cell($block_width, 5, 'CC: ', 0, 1, 'L');
+// --- Cédulas ---
+$pdf->SetFont('Arial', '', 8);
+$pdf->Cell($col_width, 5, 'CC:', 0, 0, 'L');
+$pdf->Cell($col_width, 5, 'CC: ' . $pdf->to_iso($hist['responsable_cedula'] ?? ''), 0, 0, 'L');
+$pdf->Cell($col_width, 5, 'CC:', 0, 1, 'L');
 
-$pdf->Ln(8);
+$pdf->Ln(15); // Espacio para la firma física
 
-$pdf->SetFont('Arial', 'B', 9);
-$pdf->Cell($block_width, 5, 'Firma _____________________', 0, 0, 'L');
-$pdf->Cell($block_width, 5, 'Firma _____________________', 0, 0, 'L');
-$pdf->Cell($block_width, 5, 'Firma _____________________', 0, 1, 'L');
+// --- Líneas de Firma y Fecha ---
+$line_length = 55;
 
-$pdf->Ln(2);
+$x_current = $pdf->GetX();
+$y_current = $pdf->GetY();
 
-$pdf->Cell($block_width, 5, 'Fecha _____________________', 0, 0, 'L');
-$pdf->Cell($block_width, 5, 'Fecha _____________________', 0, 0, 'L');
-$pdf->Cell($block_width, 5, 'Fecha _____________________', 0, 1, 'L');
+// Columna 1
+$pdf->Line($x_current, $y_current, $x_current + $line_length, $y_current);
+$pdf->SetXY($x_current, $y_current);
+$pdf->Cell($line_length, 5, 'Firma', 0, 0, 'L');
+$pdf->SetXY($x_current, $y_current + 8);
+$pdf->Cell(12, 5, 'Fecha', 0, 0, 'L');
+$pdf->Line($x_current + 10, $y_current + 12, $x_current + $line_length, $y_current + 12);
+
+// Columna 2
+$x_current = $x_start + $col_width;
+$pdf->Line($x_current, $y_current, $x_current + $line_length, $y_current);
+$pdf->SetXY($x_current, $y_current);
+$pdf->Cell($line_length, 5, 'Firma', 0, 0, 'L');
+$pdf->SetXY($x_current, $y_current + 8);
+$pdf->Cell(12, 5, 'Fecha', 0, 0, 'L');
+$pdf->Line($x_current + 10, $y_current + 12, $x_current + $line_length, $y_current + 12);
+
+// Columna 3
+$x_current = $x_start + ($col_width * 2);
+$pdf->Line($x_current, $y_current, $x_current + $line_length, $y_current);
+$pdf->SetXY($x_current, $y_current);
+$pdf->Cell($line_length, 5, 'Firma', 0, 0, 'L');
+$pdf->SetXY($x_current, $y_current + 8);
+$pdf->Cell(12, 5, 'Fecha', 0, 0, 'L');
+$pdf->Line($x_current + 10, $y_current + 12, $x_current + $line_length, $y_current + 12);
+
 
 $pdf->Output('I', 'Acta_Baja_S' . ($hist['serie'] ?? 'N-A') . '.pdf');
 exit;
