@@ -2,7 +2,7 @@
 ob_start();
 // =================================================================================
 // ARCHIVO: procesar_importacion_completo.php
-// VERSIÓN: DEFINITIVA (Excel de Errores Completo + Vacunas Moneda/Fechas)
+// VERSIÓN: DEFINITIVA REAL (Limpiador Inteligente + Fechas + Reporte Excel)
 // =================================================================================
 
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -70,31 +70,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $errorSheet = $errorSpreadsheet->getActiveSheet();
                 $errorSheet->setTitle('Activos Omitidos');
                 
-                // Extraer los encabezados originales de la Fila 1 y agregar la columna de Motivo
                 $headers = $sheet->rangeToArray('A1:' . $highestColumn . '1', NULL, TRUE, FALSE)[0];
                 $headers[] = 'MOTIVO DE OMISIÓN';
                 
                 $errorSheet->fromArray($headers, NULL, 'A1');
                 
-                // Darle estilo rojo y negrita a la cabecera
                 $lastColIndex = count($headers);
                 $lastColLetter = Coordinate::stringFromColumnIndex($lastColIndex);
                 $errorSheet->getStyle('A1:' . $lastColLetter . '1')->getFont()->setBold(true);
                 $errorSheet->getStyle('A1:' . $lastColLetter . '1')->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FFFF0000');
                 $errorSheet->getStyle('A1:' . $lastColLetter . '1')->getFont()->getColor()->setARGB('FFFFFFFF');
                 
-                $errorRow = 2; // Iniciar escritura de errores en la fila 2
+                $errorRow = 2; 
                 
                 for ($row = 2; $row <= $highestRow; $row++) {
                     
-                    // LECTURA Y LIMPIEZA DE TEXTOS BÁSICOS
+                    // 1. LECTURA BÁSICA
                     $raw_cat = trim((string)$sheet->getCell('A' . $row)->getValue());
                     $categoria = in_array(strtoupper($raw_cat), $valores_nulos_comunes) ? '' : mb_strtoupper($raw_cat, 'UTF-8');
                     
                     $raw_tipo = trim((string)$sheet->getCell('B' . $row)->getValue());
                     $nombre_tipo = in_array(strtoupper($raw_tipo), $valores_nulos_comunes) ? '' : mb_strtoupper($raw_tipo, 'UTF-8');
                     
-                    // Vida Útil (Columna C)
                     $vida_util = floatval($sheet->getCell('C' . $row)->getCalculatedValue() ?? 0);
                     
                     $raw_inv = trim((string)$sheet->getCell('D' . $row)->getValue());
@@ -115,7 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $estado = in_array(strtoupper($raw_estado), $valores_nulos_comunes) ? '' : mb_strtoupper($raw_estado, 'UTF-8');
 
                     // ========================================================
-                    // LIMPIEZA INTELIGENTE DE PRECIOS COLOMBIANOS
+                    // LIMPIEZA INTELIGENTE DE PRECIOS (Vacuna Notación Científica)
                     // ========================================================
                     $cellVal = $sheet->getCell('J' . $row)->getCalculatedValue();
                     
@@ -183,17 +180,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // ========================================================
                     $registrarError = function($motivoError) use (&$errores, &$errorSheet, &$errorRow, $sheet, $row, $highestColumn) {
                         $errores[] = "Fila {$row}: " . $motivoError;
-                        // Leer la fila completa de la A hasta la última letra
                         $rowData = $sheet->rangeToArray('A' . $row . ':' . $highestColumn . $row, NULL, TRUE, FALSE)[0];
-                        // Agregar el motivo al final
                         $rowData[] = $motivoError;
-                        // Pegarlo en la hoja de errores
                         $errorSheet->fromArray($rowData, NULL, 'A'.$errorRow);
                         $errorRow++;
                     };
 
                     // ========================================================
-                    // VALIDACIONES
+                    // VALIDACIONES DE USUARIO Y DUPLICADOS
                     // ========================================================
                     $id_usuario_responsable = null;
                     $id_centro_costo = null;
@@ -249,7 +243,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if ($codigo_inventario !== null) {
                         $res_inv = $conexion->query("SELECT id FROM activos_tecnologicos WHERE Codigo_Inv = '" . $conexion->real_escape_string($codigo_inventario) . "' LIMIT 1");
                         if ($res_inv && $res_inv->num_rows > 0) {
-                            $registrarError("El Código Inventario {$codigo_inventario} ya está registrado.");
+                            $registrarError("El Código de Inventario {$codigo_inventario} ya está registrado.");
                             continue;
                         }
                     }
@@ -278,7 +272,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if ($stmt_activo->execute()) {
                         $importados++;
                     } else {
-                        $registrarError("Error en BD al guardar activo: " . $stmt_activo->error);
+                        $registrarError("Error interno en BD al guardar activo: " . $stmt_activo->error);
                     }
                     $stmt_activo->close();
                 }
@@ -295,7 +289,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $writer = new Xlsx($errorSpreadsheet);
                     $writer->save($filePath);
                     
-                    $btnDescarga = "<br><br><a href='{$fileName}' class='btn btn-warning btn-sm border border-dark text-dark fw-bold shadow-sm' download><i class='bi bi-file-earmark-excel'></i> Descargar Reporte de Omitidos (Excel)</a>";
+                    $btnDescarga = "<br><br><a href='{$fileName}' class='btn btn-warning btn-sm border border-dark text-dark fw-bold shadow-sm' download><i class='bi bi-file-earmark-excel'></i> Descargar Excel de Errores/Omitidos</a>";
                 }
 
                 if ($importados > 0) {
@@ -303,7 +297,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $_SESSION['import_success_message'] = "¡Éxito! Se importaron $importados activos correctamente." . $btnDescarga;
                 } else {
                     $conexion->rollback();
-                    $_SESSION['import_error_message'] = "No se importó ningún activo. Revise el reporte de errores." . $btnDescarga;
+                    $_SESSION['import_error_message'] = "No se importó ningún activo. Revisa el archivo de errores." . $btnDescarga;
                 }
                 
                 if (!empty($errores)) {
@@ -318,10 +312,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['import_error_message'] = "Error en la subida. Código interno: " . $file['error'];
         }
     } else {
-        $_SESSION['import_error_message'] = "El servidor bloqueó el archivo. Probablemente excede el peso permitido.";
+        $_SESSION['import_error_message'] = "El servidor bloqueó el archivo por seguridad o tamaño.";
     }
 } else {
-    $_SESSION['import_error_message'] = "Acceso denegado. Debe enviar el formulario.";
+    $_SESSION['import_error_message'] = "Acceso denegado.";
 }
 
 ob_end_clean();
