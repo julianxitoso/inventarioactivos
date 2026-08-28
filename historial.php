@@ -146,7 +146,7 @@ if (isset($conexion) && $conexion && !$conexion_error_msg) {
         <div class="report-title-area d-flex justify-content-between align-items-center">
             <h3 class="mb-0 page-title"><i class="bi bi-journal-richtext"></i> Historial del Activo</h3>
             <div class="btn-print-actions d-print-none">
-                <button type="button" class="btn btn-success btn-sm" onclick="window.print();"><i class="bi bi-printer-fill"></i> Imprimir</button>
+                <button type="button" class="btn btn-success btn-sm" onclick="window.print();"><i class="bi bi-printer-fill"></i> Imprimir Historial</button>
                 <a href="buscar.php" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-left-circle"></i> Volver a Búsqueda</a>
             </div>
         </div>
@@ -192,8 +192,8 @@ if (isset($conexion) && $conexion && !$conexion_error_msg) {
                         <p class="mb-1"><?= nl2br(htmlspecialchars($item_hist['descripcion_evento'])) ?></p>
                         
                         <?php
-                        // Comprobar si el evento es de Creación o Traslado para mostrar el botón
-                        if ($item_hist['tipo_evento'] === HISTORIAL_TIPO_CREACION || $item_hist['tipo_evento'] === HISTORIAL_TIPO_TRASLADO):
+                        // Comprobar si el evento es Creación, Traslado o BAJA para mostrar el botón
+                        if ($item_hist['tipo_evento'] === HISTORIAL_TIPO_CREACION || $item_hist['tipo_evento'] === HISTORIAL_TIPO_TRASLADO || $item_hist['tipo_evento'] === HISTORIAL_TIPO_BAJA):
                             $url_acta = '';
                             $texto_acta = '';
                             $icono_acta = '';
@@ -209,6 +209,11 @@ if (isset($conexion) && $conexion && !$conexion_error_msg) {
                                 $texto_acta = 'Generar Acta de Traslado';
                                 $icono_acta = 'bi-file-earmark-arrow-down';
                                 $clase_btn = 'btn-outline-primary';
+                            } elseif ($item_hist['tipo_evento'] === HISTORIAL_TIPO_BAJA) {
+                                $url_acta = 'generar_acta_baja_pdf.php?id_historial=' . $item_hist['id_historial'];
+                                $texto_acta = 'Generar Acta de Baja';
+                                $icono_acta = 'bi-file-earmark-x-fill';
+                                $clase_btn = 'btn-danger'; // Botón rojo sólido para destacar
                             }
                         ?>
                             <div class="mt-2">
