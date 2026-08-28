@@ -75,16 +75,20 @@ $pdf->Line($x_start + 42, $y_start, $x_start + 42, $y_start + 30);
 // División vertical vacía derecha
 $pdf->Line($x_start + 160, $y_start, $x_start + 160, $y_start + 30);
 
-// Textos centrales
-$pdf->SetFont('Arial', 'B', 9);
-$pdf->SetXY($x_start + 42, $y_start + 4);
-$pdf->Cell(118, 5, $pdf->to_iso('PROCESO EVALUACIÓN Y CONTROL'), 0, 1, 'C');
+// Textos centrales (Ajustados para que no se desborden)
+$pdf->SetFont('Arial', 'B', 8); // Letra ligeramente más pequeña para que encaje
+$pdf->SetXY($x_start + 42, $y_start + 2);
+$pdf->Cell(118, 4, $pdf->to_iso('PROCESO EVALUACIÓN Y CONTROL'), 0, 1, 'C');
 $pdf->SetX($x_start + 42);
-$pdf->Cell(118, 5, $pdf->to_iso('PROCEDIMIENTO DE AUDITORIA INTERNA'), 0, 1, 'C');
+$pdf->Cell(118, 4, $pdf->to_iso('PROCEDIMIENTO DE AUDITORIA INTERNA'), 0, 1, 'C');
 $pdf->SetX($x_start + 42);
-$pdf->Cell(118, 5, $pdf->to_iso('ARPESOD ASOCIADOS SAS'), 0, 1, 'C');
+$pdf->Cell(118, 4, $pdf->to_iso('ARPESOD ASOCIADOS SAS'), 0, 1, 'C');
 $pdf->SetX($x_start + 42);
-$pdf->Cell(118, 5, 'NIT. 900.333.755-6', 0, 1, 'C');
+$pdf->Cell(118, 4, 'NIT. 900.333.755-6', 0, 1, 'C');
+
+$pdf->Ln(1); // Pequeño espacio separador
+
+$pdf->SetFont('Arial', 'B', 9); // Letra un poco más grande para el título principal
 $pdf->SetX($x_start + 42);
 $pdf->Cell(118, 5, $pdf->to_iso('SOLICITUD DE INGRESO, TRASLADO Y/O'), 0, 1, 'C');
 $pdf->SetX($x_start + 42);
@@ -215,59 +219,47 @@ $pdf->Text($pdf->GetX() + 10.8, $pdf->GetY() + 4.5, 'X'); // Escribir la X dentr
 $pdf->SetFont('Arial', '', 9);
 $pdf->Cell(25, 6, 'Baja', 0, 1, 'R');
 
-$pdf->Ln(15);
-
 // ==========================================
-// BLOQUE 7: FIRMAS
+// BLOQUE 7: FIRMAS HORIZONTALES
 // ==========================================
+$pdf->Ln(15); // Espacio prudente antes de las firmas
 $col_width = $w_total / 3;
 
-// --- Títulos ---
+// --- Fila 1: Títulos de Firmas ---
 $pdf->SetFont('Arial', 'B', 9);
 $pdf->Cell($col_width, 5, 'Autorizado por', 0, 0, 'L');
 $pdf->Cell($col_width, 5, 'Nombre de quien entrega', 0, 0, 'L');
 $pdf->Cell($col_width, 5, 'Nombre de quien recibe', 0, 1, 'L');
 
-// --- Cédulas ---
+// --- Fila 2: Cédulas ---
 $pdf->SetFont('Arial', '', 8);
 $pdf->Cell($col_width, 5, 'CC:', 0, 0, 'L');
 $pdf->Cell($col_width, 5, 'CC: ' . $pdf->to_iso($hist['responsable_cedula'] ?? ''), 0, 0, 'L');
 $pdf->Cell($col_width, 5, 'CC:', 0, 1, 'L');
 
-$pdf->Ln(15); // Espacio para la firma física
+$pdf->Ln(14); // Espacio en blanco amplio para que la persona firme a mano
 
-// --- Líneas de Firma y Fecha ---
-$line_length = 55;
+// --- Fila 3: Línea de Firma ---
+$pdf->SetFont('Arial', 'B', 9);
+$linea_firma = '____________________________________';
+$pdf->Cell($col_width, 5, $linea_firma, 0, 0, 'L');
+$pdf->Cell($col_width, 5, $linea_firma, 0, 0, 'L');
+$pdf->Cell($col_width, 5, $linea_firma, 0, 1, 'L');
 
-$x_current = $pdf->GetX();
-$y_current = $pdf->GetY();
+// --- Fila 4: Etiqueta "Firma" debajo de la línea ---
+$pdf->SetFont('Arial', '', 8);
+$pdf->Cell($col_width, 4, 'Firma', 0, 0, 'L');
+$pdf->Cell($col_width, 4, 'Firma', 0, 0, 'L');
+$pdf->Cell($col_width, 4, 'Firma', 0, 1, 'L');
 
-// Columna 1
-$pdf->Line($x_current, $y_current, $x_current + $line_length, $y_current);
-$pdf->SetXY($x_current, $y_current);
-$pdf->Cell($line_length, 5, 'Firma', 0, 0, 'L');
-$pdf->SetXY($x_current, $y_current + 8);
-$pdf->Cell(12, 5, 'Fecha', 0, 0, 'L');
-$pdf->Line($x_current + 10, $y_current + 12, $x_current + $line_length, $y_current + 12);
+$pdf->Ln(4);
 
-// Columna 2
-$x_current = $x_start + $col_width;
-$pdf->Line($x_current, $y_current, $x_current + $line_length, $y_current);
-$pdf->SetXY($x_current, $y_current);
-$pdf->Cell($line_length, 5, 'Firma', 0, 0, 'L');
-$pdf->SetXY($x_current, $y_current + 8);
-$pdf->Cell(12, 5, 'Fecha', 0, 0, 'L');
-$pdf->Line($x_current + 10, $y_current + 12, $x_current + $line_length, $y_current + 12);
-
-// Columna 3
-$x_current = $x_start + ($col_width * 2);
-$pdf->Line($x_current, $y_current, $x_current + $line_length, $y_current);
-$pdf->SetXY($x_current, $y_current);
-$pdf->Cell($line_length, 5, 'Firma', 0, 0, 'L');
-$pdf->SetXY($x_current, $y_current + 8);
-$pdf->Cell(12, 5, 'Fecha', 0, 0, 'L');
-$pdf->Line($x_current + 10, $y_current + 12, $x_current + $line_length, $y_current + 12);
-
+// --- Fila 5: Línea de Fecha ---
+$pdf->SetFont('Arial', 'B', 9);
+$linea_fecha = 'Fecha ___________________________';
+$pdf->Cell($col_width, 5, $linea_fecha, 0, 0, 'L');
+$pdf->Cell($col_width, 5, $linea_fecha, 0, 0, 'L');
+$pdf->Cell($col_width, 5, $linea_fecha, 0, 1, 'L');
 
 $pdf->Output('I', 'Acta_Baja_S' . ($hist['serie'] ?? 'N-A') . '.pdf');
 exit;
