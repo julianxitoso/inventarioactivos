@@ -2,10 +2,12 @@
 ob_start();
 // =================================================================================
 // ARCHIVO: procesar_importacion_completo.php
-// VERSIÓN: DEFINITIVA (Limpieza extrema de moneda, fechas zona horaria, vida útil)
+// VERSIÓN: DEFINITIVA (Generador de Excel de Omitidos + Vacunas Moneda/Fechas)
 // =================================================================================
 
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
@@ -57,9 +59,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $conexion->begin_transaction();
 
                 $stmt_buscar_usuario = $conexion->prepare("SELECT id, id_centro_costo FROM usuarios WHERE usuario = ? LIMIT 1");
-                
-                // DICCIONARIO DE VALORES VACÍOS
                 $valores_nulos_comunes = ['', '.', 'S/N', 'S/N.', 'SN', 'N/A', 'NA', 'SIN SERIE', 'NO TIENE', 'NAN'];
+                
+                // ==================================================================
+                // INICIAR GENERADOR DE EXCEL DE OMITIDOS
+                // ==================================================================
+                $errorSpreadsheet = new Spreadsheet();
+                $errorSheet = $errorSpreadsheet->getActiveSheet();
+                $errorSheet->setTitle('Activos Omitidos');
+                
+                // Encabezados del archivo de errores
+                $headers = ['FILA EXCEL', 'CATEGORÍA', 'TIPO ACTIVO', 'CÉDULA RESPONSABLE', 'CÓDIGO INVENTARIO', 'SERIE', 'MOTIVO DE OMISIÓN'];
+                $errorSheet->fromArray($headers, NULL, 'A1');
+                $errorSheet->getStyle('A1:G1')->getFont()->setBold(true);
+                $errorSheet->getStyle('A1:G1')->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FFFF0000');
+                $errorSheet->getStyle('A1:G1')->getFont()->getColor()->setARGB('FFFFFFFF');
+                $errorRow = 2; // Empezar a escribir errores desde la fila 2
                 
                 for ($row = 2; $row <= $highestRow; $row++) {
                     
@@ -138,7 +153,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $codigo_depreciacion = trim((string)$sheet->getCell('P' . $row)->getValue());
                     $nombre_depreciacion = mb_strtoupper(trim((string)$sheet->getCell('Q' . $row)->getValue()), 'UTF-8');
 
-                    // Validar que la fila no esté vacía por error
                     if (empty($categoria) && empty($nombre_tipo) && empty($cedula_responsable)) { continue; }
 
                     // ========================================================
@@ -155,23 +169,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $id_usuario_responsable = $row_usu['id'];
                         $id_centro_costo = $row_usu['id_centro_costo'];
                     } else {
-                        $errores[] = "Fila {$row}: La cédula {$cedula_responsable} no existe en el sistema. Omitiendo.";
+                        // REPORTE DE ERROR AL EXCEL
+                        $motivo = "La cédula {$cedula_responsable} no existe en el sistema.";
+                        $errores[] = "Fila {$row}: " . $motivo;
+                        $errorSheet->fromArray([$row, $categoria, $nombre_tipo, $cedula_responsable, $codigo_inventario, $serie, $motivo], NULL, 'A'.$errorRow);
+                        $errorRow++;
                         continue; 
                     }
 
                     // ========================================================
-                    // 3. GESTIÓN DE CATEGORÍAS (CONTABILIDAD)
+                    // 3. GESTIÓN DE CATEGORÍAS Y TIPOS
                     // ========================================================
                     $id_categoria = null;
                     $res_cat = $conexion->query("SELECT id_categoria FROM categorias_activo WHERE nombre_categoria = '" . $conexion->real_escape_string($categoria) . "' LIMIT 1");
                     
                     if ($res_cat && $res_cat->num_rows > 0) {
                         $id_categoria = $res_cat->fetch_object()->id_categoria;
-                        $sql_upd_cat = "UPDATE categorias_activo SET cuenta_contable = ?, nombre_cuenta = ?, cuenta_depreciacion = ?, nombre_cuenta_depreciacion = ? WHERE id_categoria = ?";
-                        $stmt_upd_cat = $conexion->prepare($sql_upd_cat);
-                        $stmt_upd_cat->bind_param("ssssi", $codigo_cuenta, $nombre_cuenta, $codigo_depreciacion, $nombre_depreciacion, $id_categoria);
-                        $stmt_upd_cat->execute();
-                        $stmt_upd_cat->close();
                     } else {
                         $sql_ins_cat = "INSERT INTO categorias_activo (nombre_categoria, cuenta_contable, nombre_cuenta, cuenta_depreciacion, nombre_cuenta_depreciacion) VALUES (?, ?, ?, ?, ?)";
                         $stmt_ins_cat = $conexion->prepare($sql_ins_cat);
@@ -181,9 +194,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $stmt_ins_cat->close();
                     }
 
-                    // ========================================================
-                    // 4. GESTIÓN DE TIPOS DE ACTIVO
-                    // ========================================================
                     $id_tipo_activo = null;
                     $res_tipo = $conexion->query("SELECT id_tipo_activo FROM tipos_activo WHERE nombre_tipo_activo = '" . $conexion->real_escape_string($nombre_tipo) . "' LIMIT 1");
                     
@@ -204,7 +214,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if ($codigo_inventario !== null) {
                         $res_inv = $conexion->query("SELECT id FROM activos_tecnologicos WHERE Codigo_Inv = '" . $conexion->real_escape_string($codigo_inventario) . "' LIMIT 1");
                         if ($res_inv && $res_inv->num_rows > 0) {
-                            $errores[] = "Fila {$row}: El Código {$codigo_inventario} ya está registrado. Omitiendo.";
+                            $motivo = "El Código {$codigo_inventario} ya está registrado.";
+                            $errores[] = "Fila {$row}: " . $motivo;
+                            $errorSheet->fromArray([$row, $categoria, $nombre_tipo, $cedula_responsable, $codigo_inventario, $serie, $motivo], NULL, 'A'.$errorRow);
+                            $errorRow++;
                             continue;
                         }
                     }
@@ -212,7 +225,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if ($serie !== null) {
                         $res_serie = $conexion->query("SELECT id FROM activos_tecnologicos WHERE serie = '" . $conexion->real_escape_string($serie) . "' LIMIT 1");
                         if ($res_serie && $res_serie->num_rows > 0) {
-                            $errores[] = "Fila {$row}: El serial {$serie} ya está registrado. Omitiendo.";
+                            $motivo = "El serial {$serie} ya está registrado.";
+                            $errores[] = "Fila {$row}: " . $motivo;
+                            $errorSheet->fromArray([$row, $categoria, $nombre_tipo, $cedula_responsable, $codigo_inventario, $serie, $motivo], NULL, 'A'.$errorRow);
+                            $errorRow++;
                             continue;
                         }
                     }
@@ -233,19 +249,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if ($stmt_activo->execute()) {
                         $importados++;
                     } else {
-                        $errores[] = "Fila {$row}: Error al guardar activo -> " . $stmt_activo->error;
+                        $motivo = "Error en base de datos: " . $stmt_activo->error;
+                        $errores[] = "Fila {$row}: " . $motivo;
+                        $errorSheet->fromArray([$row, $categoria, $nombre_tipo, $cedula_responsable, $codigo_inventario, $serie, $motivo], NULL, 'A'.$errorRow);
+                        $errorRow++;
                     }
                     $stmt_activo->close();
                 }
 
                 $stmt_buscar_usuario->close();
 
+                // GENERAR ARCHIVO DE EXCEL SI HUBO ERRORES
+                $btnDescarga = "";
+                if ($errorRow > 2) {
+                    $fileName = 'activos_omitidos_' . date('Ymd_His') . '.xlsx';
+                    $filePath = __DIR__ . '/' . $fileName;
+                    $writer = new Xlsx($errorSpreadsheet);
+                    $writer->save($filePath);
+                    
+                    // Inyectar un botón bonito en la alerta
+                    $btnDescarga = "<br><br><a href='{$fileName}' class='btn btn-warning btn-sm border border-dark text-dark fw-bold shadow-sm' download><i class='bi bi-file-earmark-excel'></i> Descargar Reporte de Omitidos (Excel)</a>";
+                }
+
                 if ($importados > 0) {
                     $conexion->commit();
-                    $_SESSION['import_success_message'] = "¡Éxito total! Se importaron $importados activos correctamente.";
+                    $_SESSION['import_success_message'] = "¡Éxito! Se importaron $importados activos correctamente." . $btnDescarga;
                 } else {
                     $conexion->rollback();
-                    $_SESSION['import_error_message'] = "No se importó ningún activo. Revise los errores.";
+                    $_SESSION['import_error_message'] = "No se importó ningún activo. Revise el reporte de errores." . $btnDescarga;
                 }
                 
                 if (!empty($errores)) {
