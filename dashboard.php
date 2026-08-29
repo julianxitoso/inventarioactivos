@@ -1,10 +1,11 @@
 <?php
 // =================================================================================
 // ARCHIVO: dashboard.php
-// ESTADO: REDISEÑO PROFESIONAL v4.0
+// ESTADO: REDISEÑO PROFESIONAL v4.1
 // - Fórmula financiera exacta (fecha de corte fija + año comercial 360 días)
-// - Filtros nuevos: Rango de fecha, Tenencia, Cuenta Contable
-// - Gráficos nuevos: Antigüedad del Parque, Top Marcas
+// - Filtros: Rango de fecha, Tenencia, Cuenta Contable, Cuenta de Depreciación
+// - Gráficos: Antigüedad del Parque, Top Marcas, Inversión por Categoría (barras)
+// - Informe: Depreciación Acumulada por Cuenta Contable (tabla estilo Financiera)
 // =================================================================================
 
 ini_set('display_errors', 0); 
@@ -39,6 +40,7 @@ function limpiar($s) { return $s ? mb_convert_encoding($s, 'UTF-8', 'UTF-8') : '
 // 3. CARGAR LISTAS PARA FILTROS
 $listas = [];
 $hay_cuentas_limpias = true;
+$hay_cuentas_dep_limpias = true;
 
 if (!isset($_GET['ajax'])) {
     $r = $conexion->query("SELECT DISTINCT empresa FROM usuarios WHERE empresa != '' ORDER BY empresa");
@@ -57,18 +59,25 @@ if (!isset($_GET['ajax'])) {
     $r = $conexion->query($sql_cc);
     $listas['centros'] = $r->fetch_all(MYSQLI_ASSOC);
 
-    // NUEVO: Tenencia (se descartan filas con fórmulas de Excel sin calcular)
+    // Tenencia (se descartan filas con fórmulas de Excel sin calcular)
     $r = $conexion->query("SELECT DISTINCT tenencia FROM activos_tecnologicos 
                             WHERE tenencia IS NOT NULL AND tenencia != '' AND tenencia NOT LIKE '=%' 
                             ORDER BY tenencia");
     $listas['tenencias'] = $r->fetch_all(MYSQLI_ASSOC);
 
-    // NUEVO: Cuenta Contable (se descartan fórmulas de Excel sin calcular - ver aviso en el HTML)
+    // Cuenta Contable (se descartan fórmulas de Excel sin calcular - ver aviso en el HTML)
     $r = $conexion->query("SELECT DISTINCT cuenta_contable, nombre_cuenta FROM categorias_activo 
                             WHERE cuenta_contable IS NOT NULL AND cuenta_contable != '' AND cuenta_contable NOT LIKE '=%' 
                             ORDER BY cuenta_contable");
     $listas['cuentas'] = $r->fetch_all(MYSQLI_ASSOC);
     $hay_cuentas_limpias = count($listas['cuentas']) > 0;
+
+    // Cuenta de Depreciación (mismo problema de datos sucios que Cuenta Contable)
+    $r = $conexion->query("SELECT DISTINCT cuenta_depreciacion, nombre_cuenta_depreciacion FROM categorias_activo 
+                            WHERE cuenta_depreciacion IS NOT NULL AND cuenta_depreciacion != '' AND cuenta_depreciacion NOT LIKE '=%' 
+                            ORDER BY cuenta_depreciacion");
+    $listas['cuentas_dep'] = $r->fetch_all(MYSQLI_ASSOC);
+    $hay_cuentas_dep_limpias = count($listas['cuentas_dep']) > 0;
 }
 
 // 4. FILTROS
@@ -82,9 +91,10 @@ if ($v = $_GET['filtro_categoria'] ?? null) { $where[] = "cat.nombre_categoria =
 if ($v = $_GET['filtro_centro_costo'] ?? null) { $where[] = "cc.nombre_centro_costo = ?"; $params[] = $v; } 
 if ($v = $_GET['filtro_tipo_activo'] ?? null) { $where[] = "ta.nombre_tipo_activo = ?"; $params[] = $v; }
 
-// NUEVOS FILTROS
+// Filtros nuevos
 if ($v = $_GET['filtro_tenencia'] ?? null) { $where[] = "a.tenencia = ?"; $params[] = $v; }
 if ($v = $_GET['filtro_cuenta_contable'] ?? null) { $where[] = "cat.cuenta_contable = ?"; $params[] = $v; }
+if ($v = $_GET['filtro_cuenta_depreciacion'] ?? null) { $where[] = "cat.cuenta_depreciacion = ?"; $params[] = $v; }
 if ($v = $_GET['filtro_fecha_desde'] ?? null) { $where[] = "a.fecha_compra >= ?"; $params[] = $v; }
 if ($v = $_GET['filtro_fecha_hasta'] ?? null) { $where[] = "a.fecha_compra <= ?"; $params[] = $v; }
 
@@ -133,6 +143,32 @@ $sql_where
 $r_dep_acum = consulta($conexion, $sql_dep_acumulada, $params_dep)->fetch_assoc();
 $kpi_total_depreciado = $r_dep_acum['TotalDepreciado'] ?? 0;
 
+// Informe de Depreciación por Cuenta (igual a la tabla dinámica de Financiera)
+// Defensivo: si el código/nombre de cuenta trae fórmula de Excel sin calcular, se agrupa como 'NA'
+$sql_dep_por_cuenta = "
+SELECT 
+    COALESCE(NULLIF(CASE WHEN cat.cuenta_depreciacion LIKE '=%' THEN NULL ELSE cat.cuenta_depreciacion END, ''), 'NA') as cuenta,
+    COALESCE(NULLIF(CASE WHEN cat.nombre_cuenta_depreciacion LIKE '=%' THEN NULL ELSE cat.nombre_cuenta_depreciacion END, ''), 'NA') as nombre_cuenta,
+    SUM(
+        CASE 
+            WHEN a.vida_util IS NULL OR a.vida_util <= 0 THEN 0
+            WHEN a.fecha_compra IS NULL OR a.fecha_compra <= '1990-01-01' THEN 0
+            ELSE LEAST(
+                a.valor_aproximado, 
+                (a.valor_aproximado / a.vida_util) * (GREATEST(0, DATEDIFF('$fecha_corte_contable', a.fecha_compra)) / 360)
+            )
+        END
+    ) as suma_depreciado
+$joins 
+$sql_where 
+GROUP BY cuenta, nombre_cuenta
+ORDER BY suma_depreciado DESC
+";
+$res_cuenta = consulta($conexion, $sql_dep_por_cuenta, $params_dep);
+$reporte_cuentas = [];
+while($row = $res_cuenta->fetch_assoc()) { $reporte_cuentas[] = $row; }
+
+// VALOR NETO EN LIBROS: Lo que costaron menos lo que se depreció
 $kpi_depreciables = $kpi_valor - $kpi_total_depreciado;
 
 // C. Estados
@@ -170,7 +206,7 @@ $d_emp = []; $l_emp = [];
 $res = consulta($conexion, "SELECT u.empresa as N, COUNT(a.id) as C $joins $sql_where AND u.empresa != '' GROUP BY u.empresa ORDER BY C DESC", $params);
 while($row = $res->fetch_assoc()) { $l_emp[] = limpiar($row['N']); $d_emp[] = $row['C']; }
 
-// E. NUEVO: Antigüedad del Parque (rangos de años de uso, sobre fecha de HOY, no la de corte contable)
+// E. Antigüedad del Parque (rangos de años de uso, sobre fecha de HOY, no la de corte contable)
 $d_edad = []; $l_edad = [];
 $sql_edad = "
 SELECT 
@@ -192,7 +228,7 @@ ORDER BY FIELD(rango, '0-1 años','1-3 años','3-5 años','5-8 años','8-10 año
 $res = consulta($conexion, $sql_edad, $params);
 while($row = $res->fetch_assoc()) { $l_edad[] = $row['rango']; $d_edad[] = $row['C']; }
 
-// F. NUEVO: Top 10 Marcas (excluyendo "SIN MARCA" para que el gráfico sea útil)
+// F. Top 10 Marcas (excluyendo "SIN MARCA" para que el gráfico sea útil)
 $d_marcas = []; $l_marcas = [];
 $sql_marcas = "
 SELECT a.marca as N, COUNT(a.id) as C 
@@ -223,7 +259,8 @@ $payload = [
         'emp' => ['l' => $l_emp, 'd' => $d_emp],
         'edad' => ['l' => $l_edad, 'd' => $d_edad],
         'marcas' => ['l' => $l_marcas, 'd' => $d_marcas]
-    ]
+    ],
+    'reporte_cuentas' => $reporte_cuentas
 ];
 
 if ($ajax) {
@@ -386,6 +423,21 @@ $init_data = json_encode($payload, JSON_UNESCAPED_UNICODE);
             background: transparent !important;
             color: #a0a8b8;
         }
+
+        /* ---------- TABLA INFORME ---------- */
+        #tablaDepCuenta thead th {
+            font-size: .72rem;
+            letter-spacing: .04em;
+            border-bottom: 2px solid #e4e8ef;
+        }
+        #tablaDepCuenta tbody td {
+            font-size: .88rem;
+            border-color: #f1f3f7;
+        }
+        #tablaDepCuenta tfoot td {
+            font-size: .92rem;
+            background: #f8f9fc;
+        }
     </style>
 </head>
 <body class="page-dashboard">
@@ -404,12 +456,12 @@ $init_data = json_encode($payload, JSON_UNESCAPED_UNICODE);
 
 <div class="container-fluid px-4 mt-4 mb-5">
 
-    <?php if (!$hay_cuentas_limpias): ?>
+    <?php if (!$hay_cuentas_limpias || !$hay_cuentas_dep_limpias): ?>
     <div class="alert-data-quality mb-3">
         <i class="bi bi-exclamation-triangle-fill me-1"></i>
-        <strong>Filtro de Cuenta Contable deshabilitado temporalmente:</strong>
-        la tabla <code>categorias_activo</code> tiene fórmulas de Excel sin calcular en el campo de cuenta contable.
-        Corrige esos datos y el filtro se activará automáticamente, sin tocar código.
+        <strong>Filtros de Cuenta Contable / Cuenta de Depreciación deshabilitados temporalmente:</strong>
+        la tabla <code>categorias_activo</code> tiene fórmulas de Excel sin calcular en esos campos.
+        Corrige esos datos y los filtros se activarán automáticamente, sin tocar código.
     </div>
     <?php endif; ?>
 
@@ -474,6 +526,16 @@ $init_data = json_encode($payload, JSON_UNESCAPED_UNICODE);
                     } ?>
                 </select>
             </div>
+            <div class="col-lg-3 col-md-4">
+                <label class="small fw-bold mb-1">Cuenta Depreciación <?= !$hay_cuentas_dep_limpias ? '(sin datos limpios)' : '' ?></label>
+                <select id="selCuentaDep" class="form-select filter-select" <?= !$hay_cuentas_dep_limpias ? 'disabled' : '' ?>>
+                    <option value="">Todas</option>
+                    <?php foreach($listas['cuentas_dep'] as $i) {
+                        $label = $i['cuenta_depreciacion'] . ' - ' . $i['nombre_cuenta_depreciacion'];
+                        echo "<option value='{$i['cuenta_depreciacion']}'>{$label}</option>"; 
+                    } ?>
+                </select>
+            </div>
             <div class="col-lg-2 col-md-4">
                 <label class="small fw-bold mb-1">Compra Desde</label>
                 <input type="date" id="fechaDesde" class="form-control filter-input">
@@ -482,13 +544,9 @@ $init_data = json_encode($payload, JSON_UNESCAPED_UNICODE);
                 <label class="small fw-bold mb-1">Compra Hasta</label>
                 <input type="date" id="fechaHasta" class="form-control filter-input">
             </div>
-            <div class="col-lg-3 col-md-8">
+            <div class="col-lg-2 col-md-8">
                 <label class="small fw-bold mb-1">Buscador</label>
                 <input type="text" id="filtroCedula" class="form-control" placeholder="Cédula / Código...">
-            </div>
-            <div class="col-lg-2 col-md-4">
-                <label class="small fw-bold mb-1 text-white d-none d-lg-block">.</label>
-                <button class="btn btn-primary w-100" onclick="filtrarDatos()"><i class="bi bi-search"></i> Aplicar</button>
             </div>
         </div>
     </div>
@@ -551,7 +609,7 @@ $init_data = json_encode($payload, JSON_UNESCAPED_UNICODE);
         </div>
         <div class="col-lg-4">
             <div class="chart-box h-100">
-                <h5 class="chart-title"><i class="bi bi-pie-chart"></i> Inversión ($) por Categoría</h5>
+                <h5 class="chart-title"><i class="bi bi-bar-chart"></i> Inversión ($) por Categoría</h5>
                 <div class="chart-wrapper" style="height:280px"><canvas id="chartCatVal"></canvas></div>
             </div>
         </div>
@@ -602,9 +660,35 @@ $init_data = json_encode($payload, JSON_UNESCAPED_UNICODE);
         </div>
     </div>
 
+    <div class="row g-4 mb-4">
+        <div class="col-12">
+            <div class="chart-box">
+                <h5 class="chart-title"><i class="bi bi-table"></i> Depreciación Acumulada por Cuenta Contable</h5>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0" id="tablaDepCuenta">
+                        <thead>
+                            <tr class="text-muted small text-uppercase">
+                                <th>Cuenta Depreciación</th>
+                                <th>Nombre Cuenta Depreciación</th>
+                                <th class="text-end">Suma Valor Depreciado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaDepCuentaBody"></tbody>
+                        <tfoot>
+                            <tr class="fw-bold border-top">
+                                <td colspan="2">Total General</td>
+                                <td class="text-end" id="tablaDepCuentaTotal">--</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>
 
-<footer class="footer-custom text-center py-3"><small>Sistema de Gestión v4.0 &copy; <?= date('Y') ?></small></footer>
+<footer class="footer-custom text-center py-3"><small>Sistema de Gestión v4.1 &copy; <?= date('Y') ?></small></footer>
 
 <script>
 const db = <?= $init_data ?>;
@@ -621,6 +705,7 @@ $(document).ready(function() {
 
 function initCharts() {
     updateKPIs(db.kpi);
+    renderTablaDepCuenta(db.reporte_cuentas);
     
     charts.est = newChart('chartEstado', 'doughnut', db.charts.estado.l, db.charts.estado.d, {cutout: '65%', customColors: ['#1cc88a', '#f6c23e', '#e74a3b']});
     charts.catc = newChart('chartCatCant', 'bar', db.charts.cat_cant.l, db.charts.cat_cant.d, {indexAxis: 'y', targetFilter:'#selCategoria', color: '#4361ee'});
@@ -643,6 +728,7 @@ function filtrarDatos() {
     if($('#selCentro').val()) params.append('filtro_centro_costo', $('#selCentro').val());
     if($('#selTenencia').val()) params.append('filtro_tenencia', $('#selTenencia').val());
     if($('#selCuenta').val()) params.append('filtro_cuenta_contable', $('#selCuenta').val());
+    if($('#selCuentaDep').val()) params.append('filtro_cuenta_depreciacion', $('#selCuentaDep').val());
     if($('#fechaDesde').val()) params.append('filtro_fecha_desde', $('#fechaDesde').val());
     if($('#fechaHasta').val()) params.append('filtro_fecha_hasta', $('#fechaHasta').val());
     if($('#filtroCedula').val()) params.append('filtro_cedula', $('#filtroCedula').val());
@@ -651,6 +737,7 @@ function filtrarDatos() {
     .then(r => r.json())
     .then(d => {
         updateKPIs(d.kpi);
+        renderTablaDepCuenta(d.reporte_cuentas);
         upd(charts.est, d.charts.estado);
         upd(charts.catc, d.charts.cat_cant);
         upd(charts.catv, d.charts.cat_val);
@@ -700,12 +787,11 @@ function newChart(id, type, labels, data, opts={}) {
             },
             scales: (type === 'bar' || type === 'line') ? {
                 x: { 
-                grid: {display: false},
-            ticks: opts.format === 'currency' ? { callback: (val) => '$' + new Intl.NumberFormat('es-CO').format(val) } : {}
-    
-            },
+                    grid: {display: false},
+                    ticks: opts.format === 'currency' ? { callback: (val) => '$' + new Intl.NumberFormat('es-CO').format(val) } : {}
+                },
                 y: { grid: {color: '#f1f5f9'}, beginAtZero: true }
-            } : {},     
+            } : {},
             onClick: (e, el) => {
                 if(!el.length || !opts.targetFilter) return;
                 const idx = el[0].index;
@@ -735,6 +821,22 @@ function upd(chart, dataObj) {
     }
     
     chart.update();
+}
+
+function renderTablaDepCuenta(rows) {
+    const f = (num) => '$' + new Intl.NumberFormat('es-CO').format(Math.round(num));
+    let total = 0;
+    let html = '';
+    rows.forEach(r => {
+        total += parseFloat(r.suma_depreciado);
+        html += `<tr>
+            <td>${r.cuenta}</td>
+            <td>${r.nombre_cuenta}</td>
+            <td class="text-end">${f(r.suma_depreciado)}</td>
+        </tr>`;
+    });
+    $('#tablaDepCuentaBody').html(html);
+    $('#tablaDepCuentaTotal').text(f(total));
 }
 
 function updateKPIs(kpi) {
