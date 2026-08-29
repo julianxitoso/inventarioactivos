@@ -1,4 +1,8 @@
 <?php
+// =================================================================================
+// ARCHIVO: editar.php
+// ESTADO: CORREGIDO (Compatible con el nuevo sistema de permisos dinámicos)
+// =================================================================================
 
 // 1. SEGURIDAD Y CONEXIÓN
 require_once __DIR__ . '/backend/auth_check.php';
@@ -101,14 +105,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $mensaje = "<div class='alert alert-danger'>Error: Tipo de activo '".htmlspecialchars($nombre_tipo_activo_form)."' no válido.</div>";
             } else {
                 $marca_actualizar = $_POST['marca'] ?? '';
-                $modelo_actualizar = $_POST['modelo'] ?? '';
                 $serie_actualizar = $_POST['serie'] ?? '';
                 $estado_actualizar = $_POST['estado'] ?? '';
                 $valor_aprox_actualizar = $_POST['valor_aproximado'] ?? '0.00';
                 $detalles_actualizar = $_POST['detalles'] ?? '';
                 $fecha_compra_actualizar = $_POST['fecha_compra'] ?? null;
-                $codigo_inv_actualizar = $_POST['Codigo_Inv'] ?? null;
-                $tenencia_actualizar = $_POST['tenencia'] ?? 'PROPIO';
                 $procesador_actualizar = $_POST['procesador'] ?? null;
                 $ram_actualizar = $_POST['ram'] ?? null;
                 $disco_duro_actualizar = $_POST['disco_duro'] ?? null;
@@ -118,26 +119,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $offimatica_actualizar = $_POST['offimatica'] ?? null;
                 $antivirus_actualizar = $_POST['antivirus'] ?? null;
                 
-                // NOTA: vida_util, valor_residual y fecha_inicio_depreciacion NO se incluyen aquí
-                // a propósito: son campos de solo lectura en el formulario (vienen de la
-                // parametrización de la categoría/depreciación) y este formulario nunca los modifica.
                 $sql_update_activo = "UPDATE activos_tecnologicos SET 
-                                            id_tipo_activo=?, marca=?, modelo=?, serie=?, estado=?, valor_aproximado=?, 
+                                            id_tipo_activo=?, marca=?, serie=?, estado=?, valor_aproximado=?, 
                                             detalles=?, procesador=?, ram=?, disco_duro=?, tipo_equipo=?, 
-                                            red=?, sistema_operativo=?, offimatica=?, antivirus=?, fecha_compra=?,
-                                            Codigo_Inv=?, tenencia=?
+                                            red=?, sistema_operativo=?, offimatica=?, antivirus=?, fecha_compra=?
                                       WHERE id=?";
                 
                 $stmt = $conexion->prepare($sql_update_activo);
                 if (!$stmt) {
                     $mensaje = "<div class='alert alert-danger'>Error al preparar actualización: " . $conexion->error . "</div>";
                 } else {
-                    $tipos_para_update = 'issssdssssssssssssi'; 
+                    $tipos_para_update = 'isssdssssssssssi'; 
                     $params_para_update = [
-                        $id_tipo_activo_para_actualizar, $marca_actualizar, $modelo_actualizar, $serie_actualizar, $estado_actualizar, $valor_aprox_actualizar,
+                        $id_tipo_activo_para_actualizar, $marca_actualizar, $serie_actualizar, $estado_actualizar, $valor_aprox_actualizar,
                         $detalles_actualizar, $procesador_actualizar, $ram_actualizar, $disco_duro_actualizar, $tipo_equipo_actualizar,
                         $red_actualizar, $sistema_operativo_actualizar, $offimatica_actualizar, $antivirus_actualizar, $fecha_compra_actualizar,
-                        $codigo_inv_actualizar, $tenencia_actualizar,
                         $id_activo_a_editar
                     ];
                     $stmt->bind_param($tipos_para_update, ...$params_para_update);
@@ -370,8 +366,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // #############################################################################
 
 if ($criterio_buscada_activo) {
-    // NOTA: se agregó el LEFT JOIN a categorias_activo (a través de tipos_activo) para
-    // poder mostrar (solo lectura) la cuenta contable y la cuenta de depreciación del activo.
     $sql_select = "SELECT 
                         a.*, 
                         u.usuario AS cedula_responsable,
@@ -379,19 +373,13 @@ if ($criterio_buscada_activo) {
                         c.nombre_cargo AS cargo_responsable,
                         u.regional AS regional_responsable, 
                         u.empresa AS empresa_del_responsable, 
-                        ta.nombre_tipo_activo,
-                        cat.cuenta_contable AS cuenta_contable,
-                        cat.nombre_cuenta AS nombre_cuenta,
-                        cat.cuenta_depreciacion AS cuenta_depreciacion,
-                        cat.nombre_cuenta_depreciacion AS nombre_cuenta_depreciacion
+                        ta.nombre_tipo_activo 
                    FROM 
                         activos_tecnologicos a
                    LEFT JOIN 
                         usuarios u ON a.id_usuario_responsable = u.id
                    LEFT JOIN 
                         tipos_activo ta ON a.id_tipo_activo = ta.id_tipo_activo
-                   LEFT JOIN 
-                        categorias_activo cat ON ta.id_categoria = cat.id_categoria
                    LEFT JOIN 
                         cargos c ON u.id_cargo = c.id_cargo
                    WHERE 1=1"; 
@@ -484,7 +472,6 @@ $opciones_estado_general_editable = ['Bueno', 'Regular', 'Malo', 'En Mantenimien
 $opciones_so = ['Windows 10', 'Windows 11', 'Linux', 'MacOS'];
 $opciones_offimatica = ['Office 365', 'Office Home And Business', 'Office 2021', 'Office 2019', 'Office 2016', 'LibreOffice', 'Google Workspace'];
 $opciones_antivirus = ['Microsoft Defender', 'Bitdefender', 'ESET NOD32 Antivirus', 'McAfee Total Protection', 'Kaspersky'];
-$opciones_tenencia = ['PROPIO', 'COMODATO', 'RENTING'];
 
 
 // ------------ FUNCIONES HELPER UI -------------
@@ -516,16 +503,6 @@ if (!function_exists('textarea_editable')) {
         $readonly_attr = $is_readonly ? 'readonly' : '';
         $textarea_id = $name . '-' . $form_id_suffix_func;
         echo "<div class='{$col_class} mb-2'><label for='{$textarea_id}' class='form-label form-label-sm'>$label</label><textarea name='$name' id='{$textarea_id}' class='form-control form-control-sm' rows='2' $readonly_attr>" . htmlspecialchars($value ?? '') . "</textarea></div>";
-    }
-}
-// NUEVO: helper defensivo para no mostrarle al usuario las fórmulas de Excel sin calcular
-// que hoy tiene categorias_activo en cuenta_contable / cuenta_depreciacion (ver aviso en dashboard.php).
-if (!function_exists('mostrar_cuenta')) {
-    function mostrar_cuenta($valor) {
-        if (empty($valor) || stripos(trim($valor), '=') === 0) {
-            return 'NA';
-        }
-        return $valor;
     }
 }
 ?>
@@ -707,30 +684,10 @@ if (!function_exists('mostrar_cuenta')) {
                                                 input_editable('cargo_usuario_display', 'Cargo Resp.', $data_grupo['info']['cargo'], $form_id_individual_activo, 'text', true);
                                                 select_editable('tipo_activo_nombre', 'Tipo Activo', $opciones_tipo_activo_nombres, $activo_individual['nombre_tipo_activo'] ?? '', $form_id_individual_activo, true, true);
                                                 input_editable('marca', 'Marca', $activo_individual['marca'], $form_id_individual_activo, 'text', true, true);
-                                                input_editable('modelo', 'Modelo', $activo_individual['modelo'], $form_id_individual_activo, 'text', true, false);
                                                 input_editable('serie', 'Serie', $activo_individual['serie'], $form_id_individual_activo, 'text', true, true);
                                                 select_editable('estado', 'Estado Activo', $opciones_estado_general_editable, $activo_individual['estado'], $form_id_individual_activo, true, true);
                                                 input_editable('valor_aproximado', 'Valor Aprox.', $activo_individual['valor_aproximado'], $form_id_individual_activo, 'number', true, true);
                                                 input_editable('fecha_compra', 'Fecha de Compra', $activo_individual['fecha_compra'] ?? '', $form_id_individual_activo, 'date', true, true);
-                                                input_editable('Codigo_Inv', 'Código de Inventario', $activo_individual['Codigo_Inv'], $form_id_individual_activo, 'text', true, false);
-                                                select_editable('tenencia', 'Tenencia', $opciones_tenencia, $activo_individual['tenencia'], $form_id_individual_activo, true, true);
-
-                                                // ------------------------------------------------------------------
-                                                // BLOQUE DE SOLO LECTURA: Depreciación y Contabilidad
-                                                // Estos campos NUNCA se habilitan para edición desde esta pantalla
-                                                // (ver exclusión en habilitarCamposActivo() en el JS más abajo).
-                                                // vida_util / valor_residual / fecha_inicio_depreciacion alimentan
-                                                // el cálculo de depreciación del dashboard; cuenta_contable y
-                                                // cuenta_depreciacion vienen de categorias_activo.
-                                                // ------------------------------------------------------------------
-                                                echo "<div class='col-12'><hr class='my-2'><h6 class='mt-2 text-muted small'>Depreciación y Contabilidad (Automático - No editable aquí)</h6></div>";
-                                                input_editable('vida_util', 'Vida Útil (Años)', $activo_individual['vida_util'], $form_id_individual_activo, 'number', true, false, 'col-md-3');
-                                                input_editable('valor_residual', 'Valor Residual', $activo_individual['valor_residual'], $form_id_individual_activo, 'number', true, false, 'col-md-3');
-                                                input_editable('fecha_inicio_depreciacion', 'Inicio Depreciación', $activo_individual['fecha_inicio_depreciacion'] ?? '', $form_id_individual_activo, 'date', true, false, 'col-md-3');
-                                                input_editable('cuenta_contable_info', 'Cuenta Contable', mostrar_cuenta($activo_individual['cuenta_contable'] ?? ''), $form_id_individual_activo, 'text', true, false, 'col-md-3');
-                                                input_editable('nombre_cuenta_info', 'Nombre Cuenta', mostrar_cuenta($activo_individual['nombre_cuenta'] ?? ''), $form_id_individual_activo, 'text', true, false, 'col-md-6');
-                                                input_editable('cuenta_depreciacion_info', 'Cuenta Depreciación', mostrar_cuenta($activo_individual['cuenta_depreciacion'] ?? ''), $form_id_individual_activo, 'text', true, false, 'col-md-3');
-                                                input_editable('nombre_cuenta_depreciacion_info', 'Nombre Cuenta Depreciación', mostrar_cuenta($activo_individual['nombre_cuenta_depreciacion'] ?? ''), $form_id_individual_activo, 'text', true, false, 'col-md-3');
 
                                                 if (($activo_individual['nombre_tipo_activo'] ?? '') == 'Computador' || !empty($activo_individual['procesador'])) {
                                                     echo "<div class='col-12'><hr class='my-2'><h6 class='mt-2 text-muted small'>Detalles de Computador</h6></div>";
@@ -821,15 +778,7 @@ if (!function_exists('mostrar_cuenta')) {
                 console.error('Formulario NO encontrado para habilitar:', formId); 
                 return; 
             }
-            // NOTA: además de los dos display de usuario/cargo, excluimos los campos de
-            // Depreciación y Contabilidad (vida_util, valor_residual, fecha_inicio_depreciacion,
-            // y las 4 cuentas) porque son informativos y nunca deben editarse desde esta pantalla.
-            const elementsToEnable = form.querySelectorAll(
-                'input:not([name="nombre_usuario_display"]):not([name="cargo_usuario_display"])' +
-                ':not([name="vida_util"]):not([name="valor_residual"]):not([name="fecha_inicio_depreciacion"])' +
-                ':not([name="cuenta_contable_info"]):not([name="nombre_cuenta_info"])' +
-                ':not([name="cuenta_depreciacion_info"]):not([name="nombre_cuenta_depreciacion_info"]), select, textarea'
-            );
+            const elementsToEnable = form.querySelectorAll('input:not([name="nombre_usuario_display"]):not([name="cargo_usuario_display"]), select, textarea');
             elementsToEnable.forEach(el => { 
                 el.removeAttribute('readonly'); 
                 el.removeAttribute('disabled'); 
