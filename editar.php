@@ -1,4 +1,13 @@
 <?php
+// =================================================================================
+// ARCHIVO: editar.php
+// ESTADO: CORREGIDO (Compatible con el nuevo sistema de permisos dinámicos)
+// + Campos editables nuevos: Codigo_Inv, modelo, tenencia
+// + Campos de solo lectura (informativos, no editables): vida_util, valor_residual,
+//   fecha_inicio_depreciacion, cuenta_contable, nombre_cuenta, cuenta_depreciacion,
+//   nombre_cuenta_depreciacion (estos últimos 4 vienen de categorias_activo)
+// + Detección de PC/Impresora igual a index.php (reutiliza la columna tipo_equipo)
+// =================================================================================
 
 // 1. SEGURIDAD Y CONEXIÓN
 require_once __DIR__ . '/backend/auth_check.php';
@@ -112,6 +121,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $procesador_actualizar = $_POST['procesador'] ?? null;
                 $ram_actualizar = $_POST['ram'] ?? null;
                 $disco_duro_actualizar = $_POST['disco_duro'] ?? null;
+                // tipo_equipo se reutiliza tanto para "Tipo Equipo (PC)" como para "Tipo de Impresora",
+                // igual que en index.php / guardar_activo.php - por eso un solo campo cubre ambos casos.
                 $tipo_equipo_actualizar = $_POST['tipo_equipo'] ?? null;
                 $red_actualizar = $_POST['red'] ?? null;
                 $sistema_operativo_actualizar = $_POST['sistema_operativo'] ?? null;
@@ -485,6 +496,9 @@ $opciones_so = ['Windows 10', 'Windows 11', 'Linux', 'MacOS'];
 $opciones_offimatica = ['Office 365', 'Office Home And Business', 'Office 2021', 'Office 2019', 'Office 2016', 'LibreOffice', 'Google Workspace'];
 $opciones_antivirus = ['Microsoft Defender', 'Bitdefender', 'ESET NOD32 Antivirus', 'McAfee Total Protection', 'Kaspersky'];
 $opciones_tenencia = ['PROPIO', 'COMODATO', 'RENTING'];
+// NUEVO: opciones de tipo de impresora, igual a las de index.php. Se guardan en la misma
+// columna tipo_equipo que usan los computadores (así lo hace guardar_activo.php).
+$opciones_tipo_impresora = ['Laser', 'Tinta', 'Termica'];
 
 
 // ------------ FUNCIONES HELPER UI -------------
@@ -732,7 +746,21 @@ if (!function_exists('mostrar_cuenta')) {
                                                 input_editable('cuenta_depreciacion_info', 'Cuenta Depreciación', mostrar_cuenta($activo_individual['cuenta_depreciacion'] ?? ''), $form_id_individual_activo, 'text', true, false, 'col-md-3');
                                                 input_editable('nombre_cuenta_depreciacion_info', 'Nombre Cuenta Depreciación', mostrar_cuenta($activo_individual['nombre_cuenta_depreciacion'] ?? ''), $form_id_individual_activo, 'text', true, false, 'col-md-3');
 
-                                                if (($activo_individual['nombre_tipo_activo'] ?? '') == 'Computador' || !empty($activo_individual['procesador'])) {
+                                                // ------------------------------------------------------------------
+                                                // BLOQUE CONDICIONAL: Detalles de Computador O de Impresora,
+                                                // según el nombre del tipo de activo - misma detección de index.php.
+                                                // Ambos casos comparten el name="tipo_equipo" (así lo guarda
+                                                // guardar_activo.php), por eso nunca se pintan los dos a la vez.
+                                                // ------------------------------------------------------------------
+                                                $tipo_activo_texto = mb_strtolower($activo_individual['nombre_tipo_activo'] ?? '', 'UTF-8');
+                                                $tipo_activo_texto = strtr($tipo_activo_texto, ['á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u']);
+                                                $es_pc = (strpos($tipo_activo_texto, 'computador') !== false)
+                                                      || (strpos($tipo_activo_texto, 'portatil') !== false)
+                                                      || (strpos($tipo_activo_texto, 'todo en 1') !== false)
+                                                      || !empty($activo_individual['procesador']);
+                                                $es_impresora = (strpos($tipo_activo_texto, 'impresora') !== false);
+
+                                                if ($es_pc) {
                                                     echo "<div class='col-12'><hr class='my-2'><h6 class='mt-2 text-muted small'>Detalles de Computador</h6></div>";
                                                     input_editable('procesador', 'Procesador', $activo_individual['procesador'], $form_id_individual_activo, 'text', true, false, 'col-md-3');
                                                     input_editable('ram', 'RAM', $activo_individual['ram'], $form_id_individual_activo, 'text', true, false, 'col-md-3');
@@ -742,7 +770,11 @@ if (!function_exists('mostrar_cuenta')) {
                                                     select_editable('sistema_operativo', 'SO', $opciones_so, $activo_individual['sistema_operativo'], $form_id_individual_activo, true, false, 'col-md-3');
                                                     select_editable('offimatica', 'Offimática', $opciones_offimatica, $activo_individual['offimatica'], $form_id_individual_activo, true, false, 'col-md-3');
                                                     select_editable('antivirus', 'Antivirus', $opciones_antivirus, $activo_individual['antivirus'], $form_id_individual_activo, true, false, 'col-md-3');
+                                                } elseif ($es_impresora) {
+                                                    echo "<div class='col-12'><hr class='my-2'><h6 class='mt-2 text-muted small'>Detalles de Impresora</h6></div>";
+                                                    select_editable('tipo_equipo', 'Tipo de Impresora', $opciones_tipo_impresora, $activo_individual['tipo_equipo'], $form_id_individual_activo, true, true, 'col-md-4');
                                                 }
+
                                                 textarea_editable('detalles', 'Detalles Adicionales', $activo_individual['detalles'], $form_id_individual_activo, true, 'col-md-12');
                                                 ?>
                                             </div>
